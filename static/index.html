@@ -598,7 +598,7 @@
             <div><span class="profile-label">總年資</span><span class="text-slate-300">{{modals.candidate.experience}}</span></div>
             <div v-if="modals.candidate.raw_data?.expJobArr?.length"><span class="profile-label">最近工作</span><span class="text-slate-300">{{modals.candidate.raw_data.expJobArr[0].expFirm}} &nbsp;{{modals.candidate.raw_data.expJobArr[0].expTitle}}</span></div>
             <div v-if="modals.candidate.location"><span class="profile-label">居住地</span><span class="text-slate-300">📍 {{modals.candidate.location}}</span></div>
-            <div><span class="profile-label">更新日</span><span class="text-slate-300">{{modals.candidate.update_date}}</span><span class="text-slate-500 text-xs ml-2">（{{modals.candidate.last_activity}}）</span></div>
+            <div><span class="profile-label">更新日</span><span class="text-slate-300">{{modals.candidate.last_update}}</span><span class="text-slate-500 text-xs ml-2">（{{modals.candidate.last_active}}）</span></div>
           </div>
         </div>
         <button @click="saveCandidate(modals.candidate); modals.candidate=null"
@@ -1060,17 +1060,31 @@ createApp({
     }
 
     // ── Keyword highlighting ───────────────────────────────
-    // highlight() for plain text fields — escapes HTML first
     function highlight(text, conditions) {
       if (!text) return '';
-      let result = escapeHtml(String(text));
-      for (const cond of conditions) {
-        if (!cond.value.trim() || cond.negate) continue;
-        const escaped = escapeHtml(cond.value.trim());
-        const regex = new RegExp(escaped.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
-        result = result.replace(regex, m => `<mark class="highlight">${m}</mark>`);
+      const str = String(text);
+      const containsHtml = /<[a-z][^>]*>/i.test(str);
+      if (containsHtml) {
+        // Input already has HTML — don't escape, highlight only inside text nodes
+        let result = str;
+        for (const cond of (conditions || [])) {
+          if (!cond.value.trim() || cond.negate) continue;
+          const term = cond.value.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          result = result.replace(new RegExp(`(${term})(?=[^<]*(?:<|$))`, 'gi'),
+            '<mark class="highlight">$1</mark>');
+        }
+        return result;
+      } else {
+        // Plain text — escape first, then highlight
+        let result = escapeHtml(str);
+        for (const cond of (conditions || [])) {
+          if (!cond.value.trim() || cond.negate) continue;
+          const escaped = escapeHtml(cond.value.trim());
+          const regex = new RegExp(escaped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+          result = result.replace(regex, m => `<mark class="highlight">${m}</mark>`);
+        }
+        return result;
       }
-      return result;
     }
 
 function escapeHtml(s) {

@@ -1,0 +1,7 @@
+__pycache__/
+api/__pycache__/
+data/
+*.db
+~$*
+*.pyc
+.env
