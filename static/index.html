@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>104 Sourcing Tool</title>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+<style>
+  body { background:#0f172a; color:#e2e8f0; font-family:'Segoe UI',system-ui,sans-serif; }
+  .sidebar { background:#1e293b; min-height:100vh; }
+  .nav-item { transition:background .15s; }
+  .nav-item:hover, .nav-item.active { background:#334155; }
+  .card { background:#1e293b; border:1px solid #334155; border-radius:.75rem; }
+  .input { background:#0f172a; border:1px solid #475569; border-radius:.4rem; color:#e2e8f0;
+           padding:.35rem .6rem; outline:none; width:100%; }
+  .input:focus { border-color:#6366f1; }
+  .btn { border-radius:.4rem; padding:.35rem .9rem; font-size:.85rem; cursor:pointer;
+         transition:filter .15s; display:inline-flex; align-items:center; gap:.3rem; }
+  .btn:hover { filter:brightness(1.15); }
+  .btn-primary  { background:#6366f1; color:#fff; }
+  .btn-success  { background:#22c55e; color:#fff; }
+  .btn-danger   { background:#ef4444; color:#fff; }
+  .btn-ghost    { background:#334155; color:#e2e8f0; }
+  .badge        { border-radius:9999px; padding:.1rem .55rem; font-size:.7rem; font-weight:600; }
+  .highlight    { background:#fef08a; color:#1e293b; border-radius:2px; padding:0 2px; }
+  .tag-chip     { background:#312e81; color:#a5b4fc; border-radius:9999px;
+                  padding:.15rem .55rem; font-size:.72rem; }
+  .bool-row     { background:#0f172a; border:1px solid #334155; border-radius:.4rem;
+                  padding:.5rem .6rem; display:flex; align-items:center; gap:.5rem; }
+  .bool-row .input { padding:.45rem .6rem; font-size:.9rem; min-height:2.2rem; }
+  .select       { background:#0f172a; border:1px solid #475569; border-radius:.4rem;
+                  color:#e2e8f0; padding:.3rem .5rem; outline:none; }
+  .select:focus { border-color:#6366f1; }
+  .candidate-card { border:1px solid #334155; border-radius:.6rem; background:#0f172a;
+                    cursor:pointer; transition:border-color .15s; }
+  .candidate-card:hover { border-color:#6366f1; }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.7);
+              display:flex; align-items:center; justify-content:center; z-index:50; }
+  .modal { background:#1e293b; border-radius:.75rem; max-width:760px; width:100%;
+           max-height:90vh; overflow-y:auto; padding:1.5rem; position:relative; }
+  .profile-section { margin-bottom:1.4rem; }
+  .profile-section-title { font-size:1rem; font-weight:700; color:#f1f5f9; margin-bottom:.6rem;
+                            padding-bottom:.3rem; border-bottom:1px solid #334155; }
+  .profile-label { color:#94a3b8; font-size:.78rem; min-width:5.5rem; display:inline-block; }
+  .profile-job-note ul { list-style:disc !important; padding-left:1.4rem !important; margin:.25rem 0 !important; }
+  .profile-job-note li { display:list-item !important; margin-bottom:.3rem !important; }
+  .tree-item { padding:.3rem .5rem; border-radius:.3rem; cursor:pointer; }
+  .tree-item:hover { background:#334155; }
+  .tree-item.selected { background:#312e81; color:#a5b4fc; }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:#1e293b; }
+  ::-webkit-scrollbar-thumb { background:#475569; border-radius:3px; }
+  .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .loading-spin { animation:spin 1s linear infinite; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .tooltip { position:relative; }
+  .tooltip:hover::after { content:attr(data-tip); position:absolute; bottom:120%;
+    left:50%; transform:translateX(-50%); background:#0f172a; color:#e2e8f0;
+    border:1px solid #475569; border-radius:.3rem; padding:.2rem .5rem;
+    font-size:.7rem; white-space:nowrap; z-index:99; }
+</style>
+</head>
+<body>
+<div id="app" class="flex" style="min-height:100vh">
+
+  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <aside class="sidebar w-52 flex-shrink-0 flex flex-col p-3 gap-1">
+    <div class="text-lg font-bold text-indigo-400 px-2 py-3 border-b border-slate-700 mb-2">
+      104 Sourcing
+    </div>
+    <nav-item v-for="v in views" :key="v.id"
+      :class="['nav-item rounded px-3 py-2 flex items-center gap-2 cursor-pointer text-sm',
+               currentView===v.id ? 'active text-indigo-300' : 'text-slate-300']"
+      @click="currentView=v.id">
+      <span>{{v.icon}}</span><span>{{v.label}}</span>
+    </nav-item>
+    <div class="flex-1"></div>
+    <!-- Cookie status indicator -->
+    <div class="px-2 py-2 border-t border-slate-700 text-xs text-slate-400 flex items-center gap-2">
+      <span :class="['status-dot', cookieValid ? 'bg-green-400' : 'bg-red-400']"></span>
+      {{ cookieValid ? '104 Connected' : 'Not Connected' }}
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────── -->
+  <main class="flex-1 overflow-hidden flex flex-col" style="height:100vh">
+
+    <!-- ═══ SEARCH VIEW ═══════════════════════════════════ -->
+    <section v-if="currentView==='search'" class="flex flex-col h-full overflow-hidden">
+      <div class="p-4 border-b border-slate-700 flex items-center gap-3 flex-wrap">
+        <h1 class="text-lg font-semibold text-slate-100">Candidate Search</h1>
+        <div class="flex-1"></div>
+        <!-- Quick project selector for saving -->
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-slate-400">Save to:</span>
+          <select v-model="search.saveToProject" class="select text-sm">
+            <option value="">— select project —</option>
+            <option v-for="p in projects" :key="p.id" :value="p.id">{{p.name}}</option>
+          </select>
+        </div>
+        <button @click="fetchAll" :disabled="search.fetchingAll" class="btn btn-primary text-xs">
+          <span v-if="search.fetchingAll" class="loading-spin">⟳</span>
+          <span v-else>⬇</span>
+          {{ search.fetchingAll ? `Fetching p.${search.fetchPage}…` : 'Fetch All Pages' }}
+        </button>
+      </div>
+
+      <div class="flex flex-1 overflow-hidden">
+
+        <!-- Filter panel -->
+        <div class="w-64 flex-shrink-0 border-r border-slate-700 overflow-y-auto p-3 flex flex-col gap-3">
+
+          <!-- 104 API filters -->
+          <div class="card p-3">
+            <div class="text-xs font-semibold text-slate-400 uppercase mb-2">104 API Filters</div>
+            <div class="flex flex-col gap-2">
+              <div>
+                <label class="text-xs text-slate-400">Keyword (kws)</label>
+                <input v-model="search.apiParams.keyword" class="input text-sm" placeholder='e.g. "Signal Integrity"'/>
+                <div class="text-xs text-slate-500 mt-1">Tip: use "quotes" for exact phrase</div>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Min Experience (years)</label>
+                <select v-model="search.apiParams.work_exp_min" class="select w-full text-sm">
+                  <option value="">Any</option>
+                  <option value="1">1+ years</option>
+                  <option value="3">3+ years</option>
+                  <option value="5">5+ years</option>
+                  <option value="8">8+ years</option>
+                  <option value="10">10+ years</option>
+                  <option value="15">15+ years</option>
+                </select>
+              </div>
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <label class="text-xs text-slate-400">Age min</label>
+                  <input v-model="search.apiParams.age_min" type="number" class="input text-sm" placeholder="30"/>
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-slate-400">Age max</label>
+                  <input v-model="search.apiParams.age_max" type="number" class="input text-sm" placeholder="46"/>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Gender</label>
+                <select v-model="search.apiParams.sex" class="select w-full text-sm">
+                  <option value="">不限 (All)</option>
+                  <option value="2">男 (Male)</option>
+                  <option value="1">女 (Female)</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Sort</label>
+                <select v-model="search.apiParams.sort_type" class="select w-full text-sm">
+                  <option value="RANK">Relevance</option>
+                  <option value="DATE">Latest Update</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400">Read Status</label>
+                <select v-model="search.apiParams.read_status" class="select w-full text-sm">
+                  <option value="all">All</option>
+                  <option value="unread">Unread only</option>
+                  <option value="read">Read only</option>
+                </select>
+              </div>
+              <button @click="fetchPage(1)" class="btn btn-ghost w-full text-xs">Search 104</button>
+            </div>
+          </div>
+
+          <!-- Boolean local filter -->
+          <div class="card p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-semibold text-slate-400 uppercase">Local Filter</div>
+              <button @click="search.boolQuery.push({op:'AND',field:'any',value:'',negate:false})"
+                      class="text-indigo-400 text-xs hover:text-indigo-300">+ Add</button>
+            </div>
+            <div class="text-xs text-slate-500 mb-2">Applied locally on downloaded candidates.</div>
+            <div v-for="(cond,i) in search.boolQuery" :key="i" class="bool-row mb-2 text-xs" style="flex-direction:column;align-items:stretch;gap:.4rem;">
+              <!-- Line 1: operator controls -->
+              <div style="display:flex;align-items:center;gap:.5rem;">
+                <select v-model="cond.op" class="select text-xs" style="width:4.5rem;">
+                  <option>AND</option><option>OR</option>
+                </select>
+                <input type="checkbox" :checked="!cond.negate" @change="cond.negate = !$event.target.checked" class="cursor-pointer" title="toggle NOT"/>
+                <span v-if="cond.negate" class="text-red-400 font-bold text-xs">NOT</span>
+                <select v-model="cond.field" class="select text-xs" style="width:5rem;">
+                  <option value="any">any field</option>
+                  <option value="title">title</option>
+                  <option value="skills">skills</option>
+                  <option value="edu">edu</option>
+                </select>
+                <button @click="search.boolQuery.splice(i,1)" class="text-red-400 hover:text-red-300 ml-auto">✕</button>
+              </div>
+              <!-- Line 2: keyword input full width -->
+              <input v-model="cond.value" class="input" placeholder="type keyword…" style="width:100%;font-size:.95rem;padding:.5rem .6rem;"/>
+            </div>
+            <div class="flex gap-1 mt-2">
+              <button @click="applyLocalFilter" class="btn btn-primary flex-1 text-xs">Apply</button>
+              <button @click="clearLocalFilter" class="btn btn-ghost text-xs">Clear</button>
+            </div>
+            <!-- Quick keywords from active project -->
+            <div v-if="search.saveToProject && projectKeywords.length" class="mt-3">
+              <div class="text-xs text-slate-500 mb-1">Project keywords:</div>
+              <div class="flex flex-wrap gap-1">
+                <span v-for="kw in projectKeywords" :key="kw.id"
+                      @click="addKeywordToFilter(kw.term)"
+                      class="tag-chip cursor-pointer hover:bg-indigo-800">
+                  + {{kw.term}}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="text-xs text-slate-500 px-1">
+            Total 104 results: <b class="text-slate-300">{{search.totalCount}}</b><br/>
+            Downloaded: <b class="text-slate-300">{{search.allCandidates.length}}</b><br/>
+            After filter: <b class="text-indigo-300">{{search.filtered.length}}</b>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="flex-1 overflow-y-auto p-3">
+          <div v-if="settings.demoMode" class="bg-yellow-900 border border-yellow-600 rounded-lg p-3 mb-3 text-sm text-yellow-200">
+            🧪 <b>Demo Mode</b> — showing fake candidates. Go to Settings to disable when ready to connect 104.
+          </div>
+          <div v-if="!search.allCandidates.length && !search.loading" class="text-center text-slate-500 mt-20">
+            <div class="text-4xl mb-3">🔍</div>
+            <div>Set 104 API filters and click <b>Search 104</b>, then<br/>
+            click <b>Fetch All Pages</b> to download candidates for local filtering.</div>
+          </div>
+          <div v-if="search.loading" class="text-center text-slate-400 mt-20">
+            <div class="loading-spin text-4xl inline-block">⟳</div><br/>Loading…
+          </div>
+          <div v-if="search.error" class="card p-3 text-red-400 text-sm mb-3">{{search.error}}</div>
+
+          <div class="grid grid-cols-1 gap-2">
+            <div v-for="c in search.filtered" :key="c.candidate_104_id"
+                 @click="openCandidateModal(c)"
+                 class="candidate-card p-3 flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                  <span class="font-semibold text-slate-100 text-sm" v-html="highlight(c.name || '—', search.boolQuery)"></span>
+                  <span v-if="c.age" class="badge bg-slate-700 text-slate-300">{{c.age}}歲</span>
+                  <span v-if="c.sex" class="badge bg-slate-700 text-slate-300">{{c.sex}}</span>
+                  <span v-if="c.last_active" class="badge bg-emerald-900 text-emerald-300">{{c.last_active}}</span>
+                </div>
+                <div class="text-xs text-indigo-300 mb-1" v-html="highlight(c.current_title || '', search.boolQuery)"></div>
+                <!-- Job history -->
+                <div v-if="c.exp_jobs?.length" class="text-xs text-slate-400 mb-1">
+                  <span v-for="(j,i) in c.exp_jobs.slice(0,2)" :key="i">
+                    <span v-html="highlight(j.expTitle, search.boolQuery)"></span>
+                    <span class="text-slate-500"> @ </span>
+                    <span v-html="highlight(j.expFirm, search.boolQuery)"></span>
+                    <span v-if="i<c.exp_jobs.slice(0,2).length-1" class="text-slate-600"> · </span>
+                  </span>
+                </div>
+                <div class="flex gap-3 mt-1 text-xs text-slate-500 flex-wrap">
+                  <span v-if="c.location">📍 <span v-html="highlight(c.location, search.boolQuery)"></span></span>
+                  <span v-if="c.experience">💼 {{c.experience}}</span>
+                  <span v-if="c.education" v-html="highlight(c.education, search.boolQuery)"></span>
+                  <span v-if="c.last_update">🗓 {{c.last_update}}</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1 flex-shrink-0">
+                <button @click.stop="saveCandidate(c)"
+                        :disabled="!search.saveToProject"
+                        class="btn btn-success text-xs"
+                        :class="{'opacity-40':!search.saveToProject}"
+                        title="Save to selected project">
+                  💾 Save
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div v-if="search.totalPages > 1" class="flex items-center justify-center gap-2 mt-4 text-sm">
+            <button @click="fetchPage(search.currentPage-1)" :disabled="search.currentPage<=1" class="btn btn-ghost">←</button>
+            <span class="text-slate-400">Page {{search.currentPage}} / {{search.totalPages}}</span>
+            <button @click="fetchPage(search.currentPage+1)" :disabled="search.currentPage>=search.totalPages" class="btn btn-ghost">→</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ PROJECTS VIEW ══════════════════════════════════ -->
+    <section v-if="currentView==='projects'" class="flex flex-col h-full overflow-hidden">
+      <div class="p-4 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="text-lg font-semibold">Projects</h1>
+        <div class="flex-1"></div>
+        <button @click="openProjectModal(null)" class="btn btn-primary text-sm">+ New Project</button>
+      </div>
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Project list -->
+        <div class="w-72 border-r border-slate-700 overflow-y-auto p-3 flex flex-col gap-2">
+          <div v-for="p in projects" :key="p.id"
+               :class="['card p-3 cursor-pointer transition-colors',
+                        selectedProject?.id===p.id ? 'border-indigo-500' : '']"
+               @click="selectProject(p)">
+            <div class="font-semibold text-sm text-slate-100">{{p.name}}</div>
+            <div class="text-xs text-slate-400 mt-1">
+              <span v-if="p.company">🏢 {{p.company}}</span>
+            </div>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span v-if="p.industry_name" class="tag-chip">{{p.industry_name}}</span>
+              <span v-if="p.position_name" class="tag-chip">{{p.position_name}}</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-2">{{p.candidate_count}} candidates</div>
+          </div>
+          <div v-if="!projects.length" class="text-slate-500 text-sm text-center mt-10">
+            No projects yet.<br/>Create one to start sourcing.
+          </div>
+        </div>
+
+        <!-- Project detail -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <div v-if="!selectedProject" class="text-slate-500 text-center mt-20">
+            Select a project to view candidates.
+          </div>
+          <div v-else>
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <h2 class="text-xl font-bold text-slate-100">{{selectedProject.name}}</h2>
+                <div class="text-sm text-slate-400 mt-1">
+                  <span v-if="selectedProject.company">{{selectedProject.company}} · </span>
+                  <span v-if="selectedProject.industry_name">{{selectedProject.industry_name}} · </span>
+                  <span v-if="selectedProject.position_name">{{selectedProject.position_name}}</span>
+                </div>
+                <div v-if="selectedProject.notes" class="text-sm text-slate-400 mt-1 italic">{{selectedProject.notes}}</div>
+              </div>
+              <div class="flex gap-2">
+                <button @click="openProjectModal(selectedProject)" class="btn btn-ghost text-xs">Edit</button>
+                <button @click="deleteProject(selectedProject.id)" class="btn btn-danger text-xs">Delete</button>
+              </div>
+            </div>
+
+            <!-- Keywords for this project -->
+            <div class="card p-3 mb-4">
+              <div class="text-xs font-semibold text-slate-400 uppercase mb-2">Relevant Keywords</div>
+              <div v-if="selectedProject.keywords?.length" class="flex flex-wrap gap-1">
+                <span v-for="kw in selectedProject.keywords" :key="kw.id" class="tag-chip">{{kw.term}}</span>
+              </div>
+              <div v-else class="text-xs text-slate-500">
+                No keywords yet for this industry/position.
+                <span class="text-indigo-400 cursor-pointer" @click="currentView='keywords'">Add in Keywords DB →</span>
+              </div>
+            </div>
+
+            <!-- Candidates -->
+            <div class="text-sm font-semibold text-slate-300 mb-2">Saved Candidates ({{projectCandidates.length}})</div>
+            <div class="grid grid-cols-1 gap-2">
+              <div v-for="c in projectCandidates" :key="c.id"
+                   class="candidate-card p-3 flex items-start gap-3">
+                <div class="flex-1 cursor-pointer" @click="openSavedCandidateModal(c)">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-sm">{{c.name || '—'}}</span>
+                    <span v-if="c.age" class="badge bg-slate-700 text-slate-300">{{c.age}}</span>
+                    <span v-if="c.education" class="badge bg-slate-700 text-slate-300">{{c.education}}</span>
+                  </div>
+                  <div class="text-xs text-indigo-300">{{c.current_title}}</div>
+                  <div class="text-xs text-slate-400 mt-1 truncate">{{c.skills}}</div>
+                  <div class="text-xs text-slate-500 mt-1">Saved: {{formatDate(c.saved_at || c.snapshot_at)}}</div>
+                  <div v-if="c.project_notes" class="text-xs text-yellow-400 mt-1">📝 {{c.project_notes}}</div>
+                </div>
+                <button @click="removeCandidateFromProject(c.id, selectedProject.id)"
+                        class="btn btn-danger text-xs flex-shrink-0">Remove</button>
+              </div>
+            </div>
+            <div v-if="!projectCandidates.length" class="text-slate-500 text-sm text-center mt-10">
+              No candidates saved to this project yet.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ CANDIDATES VIEW ════════════════════════════════ -->
+    <section v-if="currentView==='candidates'" class="flex flex-col h-full overflow-hidden">
+      <div class="p-4 border-b border-slate-700 flex items-center gap-3 flex-wrap">
+        <h1 class="text-lg font-semibold">All Saved Candidates</h1>
+        <div class="flex-1"></div>
+        <input v-model="candSearch" @input="loadCandidates" class="input text-sm w-48" placeholder="Search name/title/skills…"/>
+        <select v-model="candProjectFilter" @change="loadCandidates" class="select text-sm">
+          <option value="">All Projects</option>
+          <option v-for="p in projects" :key="p.id" :value="p.id">{{p.name}}</option>
+        </select>
+        <button @click="exportCSV" class="btn btn-ghost text-xs">⬇ Export CSV</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4">
+        <div class="grid grid-cols-1 gap-2">
+          <div v-for="c in savedCandidates" :key="c.id"
+               @click="openSavedCandidateModal(c)"
+               class="candidate-card p-3 cursor-pointer">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-semibold text-sm">{{c.name || '—'}}</span>
+              <span v-if="c.age" class="badge bg-slate-700 text-slate-300">{{c.age}}</span>
+              <span v-if="c.education" class="badge bg-slate-700 text-slate-300">{{c.education}}</span>
+            </div>
+            <div class="text-xs text-indigo-300">{{c.current_title}}</div>
+            <div class="text-xs text-slate-400 mt-1">{{c.skills}}</div>
+            <div class="flex gap-3 mt-2 text-xs text-slate-500">
+              <span v-if="c.location">📍 {{c.location}}</span>
+              <span v-if="c.experience_years">💼 {{c.experience_years}}y</span>
+              <span>Saved: {{formatDate(c.snapshot_at)}}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="!savedCandidates.length" class="text-slate-500 text-center mt-20">
+          No saved candidates yet.
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ KEYWORDS DB VIEW ═══════════════════════════════ -->
+    <section v-if="currentView==='keywords'" class="flex flex-col h-full overflow-hidden">
+      <div class="p-4 border-b border-slate-700 flex items-center gap-3">
+        <h1 class="text-lg font-semibold">Keywords Database</h1>
+      </div>
+      <div class="flex flex-1 overflow-hidden">
+
+        <!-- Industry tree -->
+        <div class="w-56 border-r border-slate-700 overflow-y-auto p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400 uppercase">Industries</span>
+            <button @click="openIndustryModal()" class="text-indigo-400 text-xs hover:text-indigo-300">+</button>
+          </div>
+          <div v-for="ind in industries" :key="ind.id">
+            <div :class="['tree-item flex items-center justify-between text-sm',
+                          kwFilter.industry_id===ind.id ? 'selected' : 'text-slate-300']"
+                 @click="selectIndustry(ind)">
+              <span>{{ind.name}}</span>
+              <button @click.stop="deleteIndustry(ind.id)" class="text-red-400 opacity-0 hover:opacity-100 text-xs">✕</button>
+            </div>
+            <!-- Positions under this industry -->
+            <div v-if="kwFilter.industry_id===ind.id" class="ml-3 mt-1 mb-1">
+              <div v-for="pos in filteredPositions" :key="pos.id"
+                   :class="['tree-item flex items-center justify-between text-xs',
+                             kwFilter.position_id===pos.id ? 'selected' : 'text-slate-400']"
+                   @click.stop="selectPosition(pos)">
+                <span>{{pos.name}}</span>
+                <button @click.stop="deletePosition(pos.id)" class="text-red-400 opacity-0 hover:opacity-100">✕</button>
+              </div>
+              <div class="tree-item text-xs text-indigo-400 cursor-pointer"
+                   @click.stop="openPositionModal(ind.id)">+ Add position</div>
+            </div>
+          </div>
+          <div class="tree-item text-xs text-indigo-400 mt-2" @click="openIndustryModal()">+ Add industry</div>
+        </div>
+
+        <!-- Keywords panel -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="text-sm text-slate-300">
+              <span v-if="kwFilter.position_id">{{currentPositionName}}</span>
+              <span v-else-if="kwFilter.industry_id">{{currentIndustryName}} — all positions</span>
+              <span v-else class="text-slate-500">Select an industry to browse keywords</span>
+            </div>
+            <div class="flex-1"></div>
+            <button @click="openKeywordModal(null)" :disabled="!kwFilter.industry_id" class="btn btn-primary text-xs">+ Add Keyword</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div v-for="kw in filteredKeywords" :key="kw.id"
+                 class="card p-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-semibold text-sm text-slate-100">{{kw.term}}</div>
+                  <div v-if="kw.notes" class="text-xs text-slate-400 mt-1">{{kw.notes}}</div>
+                  <div class="flex gap-1 mt-2">
+                    <span v-if="kw.industry_name" class="tag-chip">{{kw.industry_name}}</span>
+                    <span v-if="kw.position_name" class="tag-chip">{{kw.position_name}}</span>
+                    <span v-else class="badge bg-slate-700 text-slate-400 text-xs">all positions</span>
+                  </div>
+                </div>
+                <div class="flex gap-1 flex-shrink-0">
+                  <button @click="openKeywordModal(kw)" class="btn btn-ghost text-xs">✏</button>
+                  <button @click="deleteKeyword(kw.id)" class="btn btn-danger text-xs">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="kwFilter.industry_id && !filteredKeywords.length"
+               class="text-slate-500 text-sm text-center mt-10">
+            No keywords yet. Click <b>+ Add Keyword</b>.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SETTINGS VIEW ══════════════════════════════════ -->
+    <section v-if="currentView==='settings'" class="p-6 overflow-y-auto h-full">
+      <h1 class="text-lg font-semibold mb-4">Settings</h1>
+
+      <!-- Demo mode -->
+      <div class="card p-4 mb-4 max-w-2xl border-2" :class="settings.demoMode ? 'border-yellow-500' : 'border-slate-700'">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-slate-200 flex items-center gap-2">
+              🧪 Demo Mode
+              <span v-if="settings.demoMode" class="badge bg-yellow-500 text-slate-900">ACTIVE</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1">
+              Use fake candidate data to test all features without a 104 login.<br/>
+              Turn off when you're ready to connect your real recruiter account.
+            </div>
+          </div>
+          <button @click="toggleDemo"
+                  :class="['btn text-sm', settings.demoMode ? 'btn-danger' : 'btn-success']">
+            {{ settings.demoMode ? 'Disable Demo' : 'Enable Demo' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Cookie setup -->
+      <div class="card p-4 mb-4 max-w-2xl" :class="settings.demoMode ? 'opacity-50 pointer-events-none' : ''">
+        <div class="font-semibold text-slate-200 mb-1">104 Session Cookies</div>
+        <div class="text-xs text-slate-400 mb-3">
+          1. Log into <b>vip.104.com.tw</b> in your browser.<br/>
+          2. Open DevTools → Application → Cookies → copy all cookie values.<br/>
+          3. Paste the full cookie string below (format: <code class="text-indigo-300">key=value; key2=value2</code>).
+        </div>
+        <textarea v-model="settings.cookies" class="input text-xs font-mono" rows="4"
+                  placeholder="sid=xxx; token=yyy; …"></textarea>
+        <div class="flex items-center gap-2 mt-2">
+          <button @click="saveCookies" class="btn btn-primary text-sm">Save Cookies</button>
+          <button @click="testCookies" class="btn btn-ghost text-sm">Test Connection</button>
+          <span :class="['text-xs', cookieValid ? 'text-green-400' : 'text-red-400']">
+            {{settings.testMsg}}
+          </span>
+        </div>
+      </div>
+
+      <!-- Account config -->
+      <div class="card p-4 mb-4 max-w-2xl" :class="settings.demoMode ? 'opacity-50 pointer-events-none' : ''">
+        <div class="font-semibold text-slate-200 mb-1">Account Config</div>
+        <div class="text-xs text-slate-400 mb-3">
+          From the confirmed request URL:<br/>
+          <code class="text-indigo-300">…&autono=<b>822324003156553148</b>&ec=<b>107</b></code><br/>
+          Copy your <b>autono</b> and <b>ec</b> values and paste below.
+        </div>
+        <div class="flex flex-col gap-3">
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <label class="text-xs text-slate-400">autono</label>
+              <input v-model="settings.autono" class="input text-sm font-mono" placeholder="822324003156553148"/>
+            </div>
+            <div class="w-28">
+              <label class="text-xs text-slate-400">ec</label>
+              <input v-model="settings.ec" class="input text-sm font-mono" placeholder="107"/>
+            </div>
+          </div>
+          <button @click="saveAccount" class="btn btn-primary text-sm w-32">Save</button>
+        </div>
+      </div>
+
+      <!-- Endpoint config -->
+      <div class="card p-4 max-w-2xl">
+        <div class="font-semibold text-slate-200 mb-1">API Endpoints</div>
+        <div class="text-xs text-slate-400 mb-3">
+          ⚠️ These must be confirmed by inspecting vip.104.com.tw network requests (DevTools → Network → XHR).<br/>
+          Default values are best-guess estimates — update once you can inspect the actual requests.
+        </div>
+        <div class="flex flex-col gap-3">
+          <div>
+            <label class="text-xs text-slate-400">Candidate Search URL</label>
+            <input v-model="settings.searchUrl" class="input text-sm font-mono"/>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Candidate Detail URL (use {'{resume_id}'} as placeholder)</label>
+            <input v-model="settings.detailUrl" class="input text-sm font-mono"/>
+          </div>
+          <button @click="saveEndpoints" class="btn btn-primary text-sm w-32">Save Endpoints</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ════════════ MODALS ════════════════════════════════════ -->
+
+  <!-- Candidate detail modal (live search result) -->
+  <div v-if="modals.candidate" class="modal-bg" @click.self="modals.candidate=null">
+    <div class="modal">
+      <button @click="modals.candidate=null" class="absolute top-3 right-4 text-slate-400 hover:text-slate-200 text-xl">✕</button>
+
+      <!-- HEADER -->
+      <div class="flex items-start gap-3 mb-5">
+        <div class="flex-1">
+          <h2 class="text-xl font-bold" v-html="highlight(modals.candidate.name || '—', search.boolQuery)"></h2>
+          <div class="text-indigo-300 text-sm mt-1" v-html="highlight(modals.candidate.current_title || '', search.boolQuery)"></div>
+          <div class="mt-3 text-sm space-y-1">
+            <div><span class="profile-label">年齡 / 性別</span><span class="text-slate-300">{{modals.candidate.age}}歲 {{modals.candidate.sex}}</span><span class="text-slate-500 text-xs ml-3">代碼: {{modals.candidate.candidate_104_id}}</span></div>
+            <div v-if="modals.candidate.education"><span class="profile-label">最高學歷</span><span class="text-slate-300" v-html="highlight(modals.candidate.education, search.boolQuery)"></span></div>
+            <div><span class="profile-label">希望職稱</span><span class="text-slate-300" v-html="highlight(modals.candidate.current_title, search.boolQuery)"></span></div>
+            <div><span class="profile-label">總年資</span><span class="text-slate-300">{{modals.candidate.experience}}</span></div>
+            <div v-if="modals.candidate.raw_data?.expJobArr?.length"><span class="profile-label">最近工作</span><span class="text-slate-300">{{modals.candidate.raw_data.expJobArr[0].expFirm}} &nbsp;{{modals.candidate.raw_data.expJobArr[0].expTitle}}</span></div>
+            <div v-if="modals.candidate.location"><span class="profile-label">居住地</span><span class="text-slate-300">📍 {{modals.candidate.location}}</span></div>
+            <div><span class="profile-label">更新日</span><span class="text-slate-300">{{modals.candidate.update_date}}</span><span class="text-slate-500 text-xs ml-2">（{{modals.candidate.last_activity}}）</span></div>
+          </div>
+        </div>
+        <button @click="saveCandidate(modals.candidate); modals.candidate=null"
+                :disabled="!search.saveToProject"
+                class="btn btn-success text-sm flex-shrink-0"
+                :class="{'opacity-40':!search.saveToProject}">
+          💾 Save to Project
+        </button>
+      </div>
+
+      <!-- FULL PROFILE DATA -->
+      <div class="border-t border-slate-600 pt-4">
+
+        <!-- 工作經歷 -->
+        <div class="profile-section">
+          <div class="profile-section-title">工作經歷</div>
+          <div class="text-sm mb-3"><span class="profile-label">總年資</span><span class="text-slate-300">{{modals.candidate.experience}}</span></div>
+          <div v-for="(job, ji) in (modals.candidate.raw_data?.expJobArr || [])" :key="ji" class="mb-5 pl-3 border-l-2 border-indigo-700">
+            <div class="font-semibold text-slate-100 text-sm mb-1">{{job.expFirm}} &nbsp;|&nbsp; <span v-html="highlight(job.expTitle, search.boolQuery)"></span></div>
+            <div class="text-xs text-slate-400 mb-2">{{job.expStart ? job.expStart.slice(0,7) : ''}} ~ {{job.expEndDesc || ''}}</div>
+            <div v-if="job.expIndDesc" class="text-sm mb-1"><span class="profile-label">產業類別</span><span class="text-slate-300">{{job.expIndDesc}}</span></div>
+            <div v-if="job.expJobDesc" class="text-sm mb-1"><span class="profile-label">職務類別</span><span class="text-slate-300">{{job.expJobDesc}}</span></div>
+            <div v-if="job.coSizeDesc" class="text-sm mb-1"><span class="profile-label">公司規模</span><span class="text-slate-300">{{job.coSizeDesc}}</span></div>
+            <div v-if="job.expJobSkillDesc" class="text-sm mb-2"><span class="profile-label">工作技能</span><span class="text-indigo-300" v-html="highlight(job.expJobSkillDesc, search.boolQuery)"></span></div>
+            <div v-if="job.expJobNote">
+              <div class="profile-label text-sm mb-1">工作內容</div>
+              <div class="profile-job-note text-sm text-slate-300 pl-1" v-html="highlight(job.expJobNote, search.boolQuery)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 教育背景 -->
+        <div class="profile-section">
+          <div class="profile-section-title">教育背景</div>
+          <div class="text-sm text-slate-300" v-html="highlight(modals.candidate.education, search.boolQuery)"></div>
+        </div>
+
+        <!-- 求職條件 (summary from search data) -->
+        <div class="profile-section">
+          <div class="profile-section-title">求職條件</div>
+          <div class="text-sm space-y-1">
+            <div v-if="modals.candidate.current_title"><span class="profile-label">希望職稱</span><span class="text-slate-300">{{modals.candidate.current_title}}</span></div>
+            <div v-if="modals.candidate.preferred_areas"><span class="profile-label">希望地點</span><span class="text-slate-300">{{modals.candidate.preferred_areas}}</span></div>
+            <div><span class="profile-label">遠端工作</span><span class="text-slate-300">{{modals.candidate.raw_data?.remoteWork ? '對遠端工作有意願' : '未標示'}}</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FULL PROFILE: loading / error / data -->
+      <div class="border-t border-slate-600 pt-4 mt-2">
+
+        <!-- Loading -->
+        <div v-if="fullProfileLoading" class="text-slate-400 text-sm py-4 text-center">
+          ⏳ Loading full profile…
+        </div>
+
+        <!-- Error -->
+        <div v-else-if="fullProfileError" class="text-amber-400 text-xs py-2">
+          ⚠️ {{fullProfileError}}
+        </div>
+
+        <!-- Full profile sections -->
+        <template v-else-if="fp">
+
+          <!-- 個人資料 -->
+          <div class="profile-section">
+            <div class="profile-section-title">個人資料</div>
+            <div class="text-sm space-y-1">
+              <div v-if="fp.roleNowDesc"><span class="profile-label">就業狀態</span><span class="text-slate-300">{{fp.roleNowDesc}}</span></div>
+              <div v-if="fp.basicData"><span class="profile-label">基本資料</span><span class="text-slate-300">{{fp.basicData}}</span></div>
+              <div v-if="fp.militaryDesc"><span class="profile-label">兵役狀況</span><span class="text-slate-300">{{fp.militaryDesc}}</span></div>
+              <div v-if="fp.driverLicenseDesc"><span class="profile-label">持有駕照</span><span class="text-slate-300">{{fp.driverLicenseDesc}}</span></div>
+              <div v-if="fp.transportsIdDesc"><span class="profile-label">自備車輛</span><span class="text-slate-300">{{fp.transportsIdDesc}}</span></div>
+              <div v-if="fp.introduction"><span class="profile-label">個人簡介</span><span class="text-slate-300">{{fp.introduction}}</span></div>
+            </div>
+          </div>
+
+          <!-- 求職條件 full -->
+          <div class="profile-section">
+            <div class="profile-section-title">求職條件</div>
+            <div class="text-sm space-y-1">
+              <div v-if="fp.roleDesc"><span class="profile-label">工作性質</span><span class="text-slate-300">{{fp.roleDesc}}</span></div>
+              <div v-if="fp.titleCatDesc"><span class="profile-label">希望職稱</span><span class="text-slate-300" v-html="highlight(fp.titleCatDesc, search.boolQuery)"></span></div>
+              <div v-if="fp.workDesc">
+                <div class="profile-label mb-1">希望內容</div>
+                <div class="text-slate-300 pl-1 profile-job-note text-sm" v-html="highlight(fp.workDesc, search.boolQuery)"></div>
+              </div>
+              <div v-if="fp.jobCatNoDesc"><span class="profile-label">希望職類</span><span class="text-slate-300">{{fp.jobCatNoDesc}}</span></div>
+              <div v-if="fp.indCatNoDesc"><span class="profile-label">希望產業</span><span class="text-slate-300">{{fp.indCatNoDesc}}</span></div>
+              <div v-if="fp.wcityNoDesc"><span class="profile-label">希望地點</span><span class="text-slate-300">{{fp.wcityNoDesc}}</span></div>
+              <div><span class="profile-label">遠端工作</span><span class="text-slate-300">{{fp.remoteWork ? '對遠端工作有意願' : '無意願'}}</span></div>
+              <div v-if="fp.hopeSalaryDesc"><span class="profile-label">希望待遇</span><span class="text-slate-300">{{fp.hopeSalaryDesc}}</span></div>
+              <div v-if="fp.startDateOptionDesc"><span class="profile-label">可上班日</span><span class="text-slate-300">{{fp.startDateOptionDesc}}</span></div>
+              <div v-if="fp.workIntervalDescAll"><span class="profile-label">上班時段</span><span class="text-slate-300">{{fp.workIntervalDescAll}}</span></div>
+            </div>
+          </div>
+
+          <!-- 語文能力 -->
+          <div class="profile-section" v-if="fp.customResume?.languageList?.length || fp.customResume?.locallanList?.length">
+            <div class="profile-section-title">語文能力</div>
+            <div class="text-sm space-y-1">
+              <div v-for="lang in (fp.customResume?.languageList || [])" :key="lang.languageDesc">
+                <span class="profile-label">{{lang.languageDesc}}</span>
+                <span class="text-slate-300">聽/{{lang.listening}}、說/{{lang.speaking}}、讀/{{lang.reading}}、寫/{{lang.writing}}</span>
+              </div>
+              <div v-for="lang in (fp.customResume?.locallanList || [])" :key="lang.languageDesc">
+                <span class="profile-label">{{lang.languageDesc}}</span>
+                <span class="text-slate-300">{{lang.level}}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 技能專長 -->
+          <div class="profile-section" v-if="fp.specialty?.length">
+            <div class="profile-section-title">技能專長</div>
+            <div v-for="s in fp.specialty" :key="s.skill" class="mb-2">
+              <div class="profile-label mb-1">{{s.skill}}</div>
+              <div class="text-slate-300 text-sm profile-job-note" v-html="highlight(s.desc, search.boolQuery)"></div>
+            </div>
+          </div>
+
+          <!-- 認證資格 -->
+          <div class="profile-section" v-if="fp.customResume?.certificates?.length">
+            <div class="profile-section-title">認證資格</div>
+            <div v-for="cert in fp.customResume.certificates" :key="cert.category" class="text-sm mb-1">
+              <span class="profile-label">{{cert.category}}</span>
+              <span class="text-slate-300">{{cert.items.join('、')}}</span>
+            </div>
+          </div>
+
+          <!-- 自傳 -->
+          <div class="profile-section" v-if="fp.autoEng || fp.auto">
+            <div class="profile-section-title">自傳</div>
+            <div v-if="fp.autoEng" class="text-sm text-slate-300 leading-relaxed profile-job-note" v-html="highlight(fp.autoEng, search.boolQuery)"></div>
+            <div v-if="fp.auto" class="text-sm text-slate-300 leading-relaxed profile-job-note mt-2" v-html="highlight(fp.auto, search.boolQuery)"></div>
+          </div>
+
+        </template>
+
+        <!-- Fallback if full profile loaded but no fp (unexpected structure) -->
+        <template v-else-if="fullProfileData">
+          <div class="profile-section">
+            <div class="profile-section-title">Full Profile (raw)</div>
+            <pre class="text-xs text-slate-300 bg-slate-900 rounded p-3 overflow-auto max-h-80">{{JSON.stringify(fullProfileData, null, 2)}}</pre>
+          </div>
+        </template>
+
+      </div>
+
+      <div class="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-700">104 ID: {{modals.candidate.candidate_104_id}}</div>
+    </div>
+  </div>
+
+  <!-- Saved candidate detail modal -->
+  <div v-if="modals.savedCandidate" class="modal-bg" @click.self="modals.savedCandidate=null">
+    <div class="modal">
+      <button @click="modals.savedCandidate=null" class="absolute top-3 right-4 text-slate-400 hover:text-slate-200 text-xl">✕</button>
+
+      <!-- HEADER -->
+      <div class="mb-5">
+        <h2 class="text-xl font-bold">{{modals.savedCandidate.name || '—'}}</h2>
+        <div class="text-indigo-300 text-sm mt-1">{{modals.savedCandidate.current_title}}</div>
+        <div class="mt-3 text-sm space-y-1">
+          <div><span class="profile-label">年齡 / 性別</span><span class="text-slate-300">{{modals.savedCandidate.age}}歲 {{modals.savedCandidate.sex}}</span></div>
+          <div v-if="modals.savedCandidate.education"><span class="profile-label">最高學歷</span><span class="text-slate-300">{{modals.savedCandidate.education}}</span></div>
+          <div><span class="profile-label">總年資</span><span class="text-slate-300">{{modals.savedCandidate.experience}}</span></div>
+          <div v-if="modals.savedCandidate.location"><span class="profile-label">居住地</span><span class="text-slate-300">📍 {{modals.savedCandidate.location}}</span></div>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div v-if="modals.savedCandidate.keywords?.length" class="profile-section">
+        <div class="profile-section-title">Matched Keywords</div>
+        <div class="flex flex-wrap gap-1">
+          <span v-for="kw in modals.savedCandidate.keywords" :key="kw.id" class="tag-chip">{{kw.term}}</span>
+        </div>
+      </div>
+      <div v-if="modals.savedCandidate.projects?.length" class="profile-section">
+        <div class="profile-section-title">Saved in Projects</div>
+        <div class="flex flex-wrap gap-1">
+          <span v-for="p in modals.savedCandidate.projects" :key="p.id" class="tag-chip bg-indigo-900">{{p.name}}</span>
+        </div>
+      </div>
+
+      <!-- FULL PROFILE DATA -->
+      <div class="border-t border-slate-600 pt-4">
+
+        <!-- 工作經歷 -->
+        <div class="profile-section" v-if="modals.savedCandidate.raw_data?.expJobArr?.length">
+          <div class="profile-section-title">工作經歷</div>
+          <div class="text-sm mb-3"><span class="profile-label">總年資</span><span class="text-slate-300">{{modals.savedCandidate.experience}}</span></div>
+          <div v-for="(job, ji) in modals.savedCandidate.raw_data.expJobArr" :key="ji" class="mb-5 pl-3 border-l-2 border-indigo-700">
+            <div class="font-semibold text-slate-100 text-sm mb-1">{{job.expFirm}} &nbsp;|&nbsp; {{job.expTitle}}</div>
+            <div class="text-xs text-slate-400 mb-2">{{job.expStart ? job.expStart.slice(0,7) : ''}} ~ {{job.expEndDesc || ''}}</div>
+            <div v-if="job.expIndDesc" class="text-sm mb-1"><span class="profile-label">產業類別</span><span class="text-slate-300">{{job.expIndDesc}}</span></div>
+            <div v-if="job.expJobDesc" class="text-sm mb-1"><span class="profile-label">職務類別</span><span class="text-slate-300">{{job.expJobDesc}}</span></div>
+            <div v-if="job.coSizeDesc" class="text-sm mb-1"><span class="profile-label">公司規模</span><span class="text-slate-300">{{job.coSizeDesc}}</span></div>
+            <div v-if="job.expJobSkillDesc" class="text-sm mb-2"><span class="profile-label">工作技能</span><span class="text-indigo-300">{{job.expJobSkillDesc}}</span></div>
+            <div v-if="job.expJobNote">
+              <div class="profile-label text-sm mb-1">工作內容</div>
+              <div class="profile-job-note text-sm text-slate-300 pl-1" v-html="job.expJobNote"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 教育背景 -->
+        <div class="profile-section" v-if="modals.savedCandidate.education">
+          <div class="profile-section-title">教育背景</div>
+          <div class="text-sm text-slate-300">{{modals.savedCandidate.education}}</div>
+        </div>
+
+        <!-- 求職條件 -->
+        <div class="profile-section">
+          <div class="profile-section-title">求職條件</div>
+          <div class="text-sm space-y-1">
+            <div v-if="modals.savedCandidate.current_title"><span class="profile-label">希望職稱</span><span class="text-slate-300">{{modals.savedCandidate.current_title}}</span></div>
+            <div v-if="modals.savedCandidate.preferred_areas"><span class="profile-label">希望地點</span><span class="text-slate-300">{{modals.savedCandidate.preferred_areas}}</span></div>
+            <div><span class="profile-label">遠端工作</span><span class="text-slate-300">{{modals.savedCandidate.raw_data?.remoteWork ? '對遠端工作有意願' : '未標示'}}</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-700">104 ID: {{modals.savedCandidate.candidate_104_id}}</div>
+    </div>
+  </div>
+
+  <!-- Project create/edit modal -->
+  <div v-if="modals.project !== undefined" class="modal-bg" @click.self="modals.project=undefined">
+    <div class="modal max-w-md">
+      <button @click="modals.project=undefined" class="absolute top-3 right-4 text-slate-400 text-xl">✕</button>
+      <h2 class="text-lg font-bold mb-4">{{modals.projectEdit?.id ? 'Edit' : 'New'}} Project</h2>
+      <div class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs text-slate-400">Project Name *</label>
+          <input v-model="modals.projectForm.name" class="input text-sm" placeholder="e.g. TSMC Q2 Power Engineer"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Company</label>
+          <input v-model="modals.projectForm.company" class="input text-sm" placeholder="e.g. TSMC"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Industry</label>
+          <select v-model="modals.projectForm.industry_id" class="select w-full text-sm">
+            <option value="">— none —</option>
+            <option v-for="i in industries" :key="i.id" :value="i.id">{{i.name}}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Position</label>
+          <select v-model="modals.projectForm.position_id" class="select w-full text-sm">
+            <option value="">— none —</option>
+            <option v-for="p in modalPositions" :key="p.id" :value="p.id">{{p.name}}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Notes</label>
+          <textarea v-model="modals.projectForm.notes" class="input text-sm" rows="2"></textarea>
+        </div>
+        <div class="flex gap-2 mt-1">
+          <button @click="saveProject" class="btn btn-primary flex-1">Save</button>
+          <button @click="modals.project=undefined" class="btn btn-ghost flex-1">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyword create/edit modal -->
+  <div v-if="modals.keyword !== undefined" class="modal-bg" @click.self="modals.keyword=undefined">
+    <div class="modal max-w-md">
+      <button @click="modals.keyword=undefined" class="absolute top-3 right-4 text-slate-400 text-xl">✕</button>
+      <h2 class="text-lg font-bold mb-4">{{modals.keywordEdit?.id ? 'Edit' : 'Add'}} Keyword</h2>
+      <div class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs text-slate-400">Keyword / Term *</label>
+          <input v-model="modals.keywordForm.term" class="input text-sm" placeholder="e.g. single integrity"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Notes (why useful?)</label>
+          <textarea v-model="modals.keywordForm.notes" class="input text-sm" rows="2"
+                    placeholder="e.g. Used in power supply design roles, indicates high-voltage experience"></textarea>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Industry</label>
+          <select v-model="modals.keywordForm.industry_id" class="select w-full text-sm" @change="modals.keywordForm.position_id=''">
+            <option value="">General (all industries)</option>
+            <option v-for="i in industries" :key="i.id" :value="i.id">{{i.name}}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Position</label>
+          <select v-model="modals.keywordForm.position_id" class="select w-full text-sm">
+            <option value="">All positions</option>
+            <option v-for="p in kwModalPositions" :key="p.id" :value="p.id">{{p.name}}</option>
+          </select>
+        </div>
+        <div class="flex gap-2 mt-1">
+          <button @click="saveKeyword" class="btn btn-primary flex-1">Save</button>
+          <button @click="modals.keyword=undefined" class="btn btn-ghost flex-1">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Industry modal -->
+  <div v-if="modals.industry !== undefined" class="modal-bg" @click.self="modals.industry=undefined">
+    <div class="modal max-w-sm">
+      <button @click="modals.industry=undefined" class="absolute top-3 right-4 text-slate-400 text-xl">✕</button>
+      <h2 class="text-lg font-bold mb-3">Add Industry</h2>
+      <input v-model="modals.industryName" class="input text-sm mb-3" placeholder="Industry name"/>
+      <div class="flex gap-2">
+        <button @click="saveIndustry" class="btn btn-primary flex-1">Save</button>
+        <button @click="modals.industry=undefined" class="btn btn-ghost flex-1">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Position modal -->
+  <div v-if="modals.position !== undefined" class="modal-bg" @click.self="modals.position=undefined">
+    <div class="modal max-w-sm">
+      <button @click="modals.position=undefined" class="absolute top-3 right-4 text-slate-400 text-xl">✕</button>
+      <h2 class="text-lg font-bold mb-3">Add Position</h2>
+      <input v-model="modals.positionName" class="input text-sm mb-3" placeholder="Position name"/>
+      <div class="flex gap-2">
+        <button @click="savePosition" class="btn btn-primary flex-1">Save</button>
+        <button @click="modals.position=undefined" class="btn btn-ghost flex-1">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+
+createApp({
+  setup() {
+    // ── Navigation ─────────────────────────────────────────
+    const views = [
+      { id:'search',     icon:'🔍', label:'Search' },
+      { id:'projects',   icon:'📁', label:'Projects' },
+      { id:'candidates', icon:'👥', label:'All Candidates' },
+      { id:'keywords',   icon:'🏷️',  label:'Keywords DB' },
+      { id:'settings',   icon:'⚙️',  label:'Settings' },
+    ];
+    const currentView = ref('search');
+
+    // ── Cookie status ──────────────────────────────────────
+    const cookieValid = ref(false);
+
+    async function checkCookieStatus() {
+      try {
+        const r = await fetch('/api/search/cookies/status');
+        const d = await r.json();
+        cookieValid.value = d.valid;
+      } catch { cookieValid.value = false; }
+    }
+
+    // ── Areas ──────────────────────────────────────────────
+    const areas = ref({});
+    async function loadAreas() {
+      try { const r = await fetch('/api/search/areas'); areas.value = await r.json(); }
+      catch {}
+    }
+
+    // ── Search state ───────────────────────────────────────
+    const search = reactive({
+      apiParams: {
+        keyword:'', work_exp_min:'', age_min:'', age_max:'',
+        sex:'', sort_type:'RANK', read_status:'all',
+      },
+      boolQuery: [],
+      allCandidates: [],   // all fetched candidates (raw from 104)
+      filtered: [],        // after local boolean filter
+      totalCount: 0,
+      totalPages: 1,
+      currentPage: 1,
+      loading: false,
+      fetchingAll: false,
+      fetchPage: 1,
+      error: '',
+      saveToProject: '',
+    });
+
+    // Fetch one page from 104
+    async function fetchPage(page) {
+      search.loading = true;
+      search.error = '';
+      const p = { ...search.apiParams, page };
+      const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([,v])=>v!=='')));
+      try {
+        const r = await fetch(`/api/search/candidates?${qs}`);
+        const d = await r.json();
+        if (!d.ok) { search.error = d.detail || 'API error'; return; }
+        search.totalCount  = d.totalCount  || 0;
+        search.totalPages  = d.totalPages  || 1;
+        search.currentPage = page;
+        if (page === 1) search.allCandidates = d.candidates || [];
+        else search.allCandidates = [...search.allCandidates, ...(d.candidates || [])];
+        applyLocalFilter();
+      } catch(e) {
+        search.error = 'Request failed: ' + e.message;
+      } finally {
+        search.loading = false;
+      }
+    }
+
+    // Fetch ALL pages sequentially
+    async function fetchAll() {
+      search.fetchingAll = true;
+      search.allCandidates = [];
+      await fetchPage(1);
+      for (let p = 2; p <= search.totalPages; p++) {
+        search.fetchPage = p;
+        await fetchPage(p);
+        await new Promise(r => setTimeout(r, 800)); // polite delay
+      }
+      search.fetchingAll = false;
+    }
+
+    // ── Local boolean filter ───────────────────────────────
+    function getCandidateText(c, field) {
+      const jobText = (c.exp_jobs || []).map(j=>`${j.expTitle} ${j.expFirm}`).join(' ');
+      const all = [c.name, c.current_title, c.skills, c.education, c.location,
+                   c.preferred_areas, c.experience, jobText].join(' ').toLowerCase();
+      if (field === 'any')    return all;
+      if (field === 'title')  return [c.current_title, jobText].join(' ').toLowerCase();
+      if (field === 'skills') return [c.skills, jobText].join(' ').toLowerCase();
+      if (field === 'edu')    return (c.education || '').toLowerCase();
+      return all;
+    }
+
+    function matchesFilter(candidate, conditions) {
+      if (!conditions.length) return true;
+      let result = null;
+      for (const cond of conditions) {
+        if (!cond.value.trim()) continue;
+        const text = getCandidateText(candidate, cond.field);
+        let hit = text.includes(cond.value.trim().toLowerCase());
+        if (cond.negate) hit = !hit;
+        if (result === null) { result = hit; continue; }
+        result = cond.op === 'AND' ? (result && hit) : (result || hit);
+      }
+      return result === null ? true : result;
+    }
+
+    function applyLocalFilter() {
+      search.filtered = search.allCandidates.filter(c => matchesFilter(c, search.boolQuery));
+    }
+
+    function clearLocalFilter() {
+      search.boolQuery = [];
+      search.filtered = [...search.allCandidates];
+    }
+
+    function addKeywordToFilter(term) {
+      search.boolQuery.push({ op:'AND', field:'any', value:term, negate:false });
+      applyLocalFilter();
+    }
+
+    // ── Keyword highlighting ───────────────────────────────
+    // highlight() for plain text fields — escapes HTML first
+    function highlight(text, conditions) {
+      if (!text) return '';
+      let result = escapeHtml(String(text));
+      for (const cond of conditions) {
+        if (!cond.value.trim() || cond.negate) continue;
+        const escaped = escapeHtml(cond.value.trim());
+        const regex = new RegExp(escaped.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+        result = result.replace(regex, m => `<mark class="highlight">${m}</mark>`);
+      }
+      return result;
+    }
+
+function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Save candidate to project ──────────────────────────
+    async function saveCandidate(c) {
+      if (!search.saveToProject) return;
+      try {
+        await fetch('/api/candidates/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ ...c, project_id: parseInt(search.saveToProject) }),
+        });
+      } catch(e) { alert('Save failed: ' + e.message); }
+    }
+
+    // ── Projects ───────────────────────────────────────────
+    const projects = ref([]);
+    const selectedProject = ref(null);
+    const projectCandidates = ref([]);
+    const projectKeywords = ref([]);
+
+    async function loadProjects() {
+      const r = await fetch('/api/projects/');
+      projects.value = await r.json();
+    }
+
+    async function selectProject(p) {
+      selectedProject.value = p;
+      const [cands, detail] = await Promise.all([
+        fetch(`/api/projects/${p.id}/candidates`).then(r=>r.json()),
+        fetch(`/api/projects/${p.id}`).then(r=>r.json()),
+      ]);
+      projectCandidates.value = cands;
+      selectedProject.value = detail;
+    }
+
+    async function deleteProject(id) {
+      if (!confirm('Delete this project?')) return;
+      await fetch(`/api/projects/${id}`, {method:'DELETE'});
+      selectedProject.value = null;
+      projectCandidates.value = [];
+      await loadProjects();
+    }
+
+    async function removeCandidateFromProject(candidateId, projectId) {
+      await fetch(`/api/candidates/${candidateId}/projects/${projectId}`, {method:'DELETE'});
+      await selectProject(selectedProject.value);
+    }
+
+    // Keywords for selected project in search panel
+    watch(() => search.saveToProject, async (pid) => {
+      if (!pid) { projectKeywords.value = []; return; }
+      const r = await fetch(`/api/projects/${pid}/keywords`);
+      projectKeywords.value = await r.json();
+    });
+
+    // ── All saved candidates ───────────────────────────────
+    const savedCandidates = ref([]);
+    const candSearch = ref('');
+    const candProjectFilter = ref('');
+
+    async function loadCandidates() {
+      const qs = new URLSearchParams();
+      if (candSearch.value)        qs.set('search', candSearch.value);
+      if (candProjectFilter.value) qs.set('project_id', candProjectFilter.value);
+      const r = await fetch(`/api/candidates/?${qs}`);
+      savedCandidates.value = await r.json();
+    }
+
+    function exportCSV() {
+      if (!savedCandidates.value.length) return;
+      const cols = ['id','name','age','education','experience_years','location','current_title','expected_salary','skills','snapshot_at'];
+      const header = cols.join(',');
+      const rows = savedCandidates.value.map(c =>
+        cols.map(k => JSON.stringify(c[k] ?? '')).join(',')
+      );
+      const csv = [header, ...rows].join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = 'candidates.csv';
+      a.click();
+    }
+
+    // ── Keywords DB ────────────────────────────────────────
+    const industries = ref([]);
+    const allPositions = ref([]);
+    const filteredKeywords = ref([]);
+    const kwFilter = reactive({ industry_id: null, position_id: null });
+
+    const filteredPositions = computed(() =>
+      allPositions.value.filter(p => p.industry_id === kwFilter.industry_id)
+    );
+    const currentIndustryName = computed(() =>
+      industries.value.find(i => i.id === kwFilter.industry_id)?.name || ''
+    );
+    const currentPositionName = computed(() =>
+      allPositions.value.find(p => p.id === kwFilter.position_id)?.name || ''
+    );
+
+    async function loadIndustries() {
+      industries.value = await fetch('/api/keywords/industries').then(r=>r.json());
+    }
+    async function loadPositions() {
+      allPositions.value = await fetch('/api/keywords/positions').then(r=>r.json());
+    }
+    async function loadKeywords() {
+      const qs = new URLSearchParams();
+      if (kwFilter.industry_id) qs.set('industry_id', kwFilter.industry_id);
+      if (kwFilter.position_id) qs.set('position_id', kwFilter.position_id);
+      filteredKeywords.value = await fetch(`/api/keywords/?${qs}`).then(r=>r.json());
+    }
+
+    function selectIndustry(ind) {
+      if (kwFilter.industry_id === ind.id) {
+        kwFilter.industry_id = null; kwFilter.position_id = null;
+      } else {
+        kwFilter.industry_id = ind.id; kwFilter.position_id = null;
+      }
+      loadKeywords();
+    }
+
+    function selectPosition(pos) {
+      kwFilter.position_id = kwFilter.position_id === pos.id ? null : pos.id;
+      loadKeywords();
+    }
+
+    async function deleteIndustry(id) {
+      if (!confirm('Delete industry and all its positions/keywords?')) return;
+      await fetch(`/api/keywords/industries/${id}`, {method:'DELETE'});
+      kwFilter.industry_id = null; kwFilter.position_id = null;
+      await Promise.all([loadIndustries(), loadPositions(), loadKeywords()]);
+    }
+
+    async function deletePosition(id) {
+      if (!confirm('Delete this position?')) return;
+      await fetch(`/api/keywords/positions/${id}`, {method:'DELETE'});
+      kwFilter.position_id = null;
+      await Promise.all([loadPositions(), loadKeywords()]);
+    }
+
+    async function deleteKeyword(id) {
+      if (!confirm('Delete this keyword?')) return;
+      await fetch(`/api/keywords/${id}`, {method:'DELETE'});
+      await loadKeywords();
+    }
+
+    // ── Modals ─────────────────────────────────────────────
+    const modals = reactive({
+      candidate: null,
+      savedCandidate: null,
+      project: undefined,
+      projectForm: {},
+      projectEdit: null,
+      keyword: undefined,
+      keywordForm: {},
+      keywordEdit: null,
+      industry: undefined,
+      industryName: '',
+      position: undefined,
+      positionName: '',
+      positionForIndustry: null,
+    });
+
+    const fullProfileLoading = ref(false);
+    const fullProfileData    = ref(null);
+    const fullProfileError   = ref('');
+    // Shorthand: the actual resume object nested inside the API response
+    const fp = Vue.computed(() => fullProfileData.value?.data?.resume || null);
+
+    async function openCandidateModal(c) {
+      modals.candidate   = c;
+      fullProfileData.value  = null;
+      fullProfileError.value = '';
+      fullProfileLoading.value = true;
+      try {
+        const masterUrl = c.raw_data?.masterUrl || '';
+        const url = `/api/search/candidates/${c.candidate_104_id}/detail` +
+                    (masterUrl ? `?master_url=${encodeURIComponent(masterUrl)}` : '');
+        const res = await fetch(url);
+        const d   = await res.json();
+        if (d.demo) {
+          fullProfileError.value = 'Full profile not available in demo mode.';
+        } else if (d.raw) {
+          fullProfileData.value = d.raw;
+        } else if (d.html) {
+          fullProfileError.value = 'Full profile returned HTML — API endpoint needs confirmation.';
+        } else {
+          fullProfileError.value = d.detail || 'Could not load full profile.';
+        }
+      } catch(e) {
+        fullProfileError.value = 'Network error loading full profile.';
+      } finally {
+        fullProfileLoading.value = false;
+      }
+    }
+
+    async function openSavedCandidateModal(c) {
+      const detail = await fetch(`/api/candidates/${c.id}`).then(r=>r.json());
+      modals.savedCandidate = detail;
+    }
+
+    function openProjectModal(p) {
+      modals.projectEdit = p;
+      modals.projectForm = p
+        ? { name:p.name, company:p.company||'', industry_id:p.industry_id||'', position_id:p.position_id||'', notes:p.notes||'' }
+        : { name:'', company:'', industry_id:'', position_id:'', notes:'' };
+      modals.project = true;
+    }
+
+    const modalPositions = computed(() =>
+      modals.projectForm.industry_id
+        ? allPositions.value.filter(p => p.industry_id == modals.projectForm.industry_id)
+        : allPositions.value
+    );
+
+    async function saveProject() {
+      const body = { ...modals.projectForm };
+      if (!body.industry_id) body.industry_id = null;
+      if (!body.position_id) body.position_id = null;
+      if (modals.projectEdit?.id) {
+        await fetch(`/api/projects/${modals.projectEdit.id}`, {
+          method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+        });
+      } else {
+        await fetch('/api/projects/', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+        });
+      }
+      modals.project = undefined;
+      await loadProjects();
+    }
+
+    function openKeywordModal(kw) {
+      modals.keywordEdit = kw;
+      modals.keywordForm = kw
+        ? { term:kw.term, notes:kw.notes||'', industry_id:kw.industry_id||'', position_id:kw.position_id||'' }
+        : { term:'', notes:'', industry_id: kwFilter.industry_id||'', position_id: kwFilter.position_id||'' };
+      modals.keyword = true;
+    }
+
+    const kwModalPositions = computed(() =>
+      modals.keywordForm.industry_id
+        ? allPositions.value.filter(p => p.industry_id == modals.keywordForm.industry_id)
+        : allPositions.value
+    );
+
+    async function saveKeyword() {
+      const body = { ...modals.keywordForm };
+      if (!body.industry_id) body.industry_id = null;
+      if (!body.position_id) body.position_id = null;
+      if (modals.keywordEdit?.id) {
+        await fetch(`/api/keywords/${modals.keywordEdit.id}`, {
+          method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+        });
+      } else {
+        await fetch('/api/keywords/', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+        });
+      }
+      modals.keyword = undefined;
+      await loadKeywords();
+    }
+
+    function openIndustryModal() { modals.industryName=''; modals.industry=true; }
+    async function saveIndustry() {
+      await fetch('/api/keywords/industries', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:modals.industryName}),
+      });
+      modals.industry=undefined;
+      await loadIndustries();
+    }
+
+    function openPositionModal(industryId) {
+      modals.positionName=''; modals.positionForIndustry=industryId; modals.position=true;
+    }
+    async function savePosition() {
+      await fetch('/api/keywords/positions', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:modals.positionName, industry_id:modals.positionForIndustry}),
+      });
+      modals.position=undefined;
+      await loadPositions();
+    }
+
+    // ── Settings ───────────────────────────────────────────
+    const settings = reactive({
+      cookies:'', testMsg:'', demoMode:false,
+      autono:'', ec:'',
+    });
+
+    async function loadSettings() {
+      const [account, demo] = await Promise.all([
+        fetch('/api/search/account').then(r=>r.json()),
+        fetch('/api/search/demo').then(r=>r.json()),
+      ]);
+      settings.autono   = account.autono;
+      settings.ec       = account.ec;
+      settings.demoMode = demo.enabled;
+    }
+
+    async function saveAccount() {
+      await fetch('/api/search/account', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ autono: settings.autono, ec: settings.ec }),
+      });
+      await checkCookieStatus();
+    }
+
+    async function toggleDemo() {
+      const next = !settings.demoMode;
+      await fetch(`/api/search/demo?enabled=${next}`, { method:'POST' });
+      settings.demoMode = next;
+      await checkCookieStatus();
+    }
+
+    async function saveCookies() {
+      await fetch('/api/search/cookies', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({cookies:settings.cookies}),
+      });
+      await checkCookieStatus();
+      settings.testMsg = 'Saved.';
+    }
+
+    async function testCookies() {
+      settings.testMsg = 'Testing…';
+      const r = await fetch('/api/search/cookies/status');
+      const d = await r.json();
+      cookieValid.value = d.valid;
+      settings.testMsg = d.message;
+    }
+
+    async function saveEndpoints() { /* endpoints are now fixed/confirmed */ }
+
+    // ── Helpers ────────────────────────────────────────────
+    function formatDate(s) {
+      if (!s) return '—';
+      return new Date(s).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
+    }
+
+    // ── Watchers for view changes ──────────────────────────
+    watch(currentView, async (v) => {
+      if (v === 'projects')   await Promise.all([loadProjects(), loadIndustries(), loadPositions()]);
+      if (v === 'candidates') await Promise.all([loadProjects(), loadCandidates()]);
+      if (v === 'keywords')   await Promise.all([loadIndustries(), loadPositions(), loadKeywords()]);
+      if (v === 'settings')   await loadSettings();
+    });
+
+    // ── Init ───────────────────────────────────────────────
+    onMounted(async () => {
+      await Promise.all([checkCookieStatus(), loadAreas(), loadProjects(), loadIndustries(), loadPositions()]);
+    });
+
+    return {
+      views, currentView, cookieValid, areas,
+      search, fetchPage, fetchAll, applyLocalFilter, clearLocalFilter, addKeywordToFilter,
+      highlight, saveCandidate,
+      projects, selectedProject, projectCandidates, projectKeywords,
+      loadProjects, selectProject, deleteProject, removeCandidateFromProject,
+      savedCandidates, candSearch, candProjectFilter, loadCandidates, exportCSV,
+      industries, allPositions, filteredPositions, filteredKeywords, kwFilter,
+      currentIndustryName, currentPositionName,
+      loadIndustries, loadPositions, loadKeywords,
+      selectIndustry, selectPosition, deleteIndustry, deletePosition, deleteKeyword,
+      modals, openCandidateModal, openSavedCandidateModal,
+      fullProfileLoading, fullProfileData, fullProfileError, fp,
+      openProjectModal, saveProject, modalPositions,
+      openKeywordModal, saveKeyword, kwModalPositions,
+      openIndustryModal, saveIndustry, openPositionModal, savePosition,
+      settings, saveCookies, testCookies, saveEndpoints, loadSettings, toggleDemo, saveAccount,
+      formatDate,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
