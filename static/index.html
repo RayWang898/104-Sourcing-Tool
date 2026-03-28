@@ -6,59 +6,109 @@
 <title>104 Sourcing Tool</title>
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
-  body { background:#0f172a; color:#e2e8f0; font-family:'Segoe UI',system-ui,sans-serif; }
-  .sidebar { background:#1e293b; min-height:100vh; }
+  /* ── Base — olive green (#414833 main) ── */
+  body { background:#1c2118; color:#c4ccb4; font-family:'Noto Sans TC','Segoe UI',system-ui,sans-serif; }
+  .sidebar { background:#252c1f; min-height:100vh; }
   .nav-item { transition:background .15s; }
-  .nav-item:hover, .nav-item.active { background:#334155; }
-  .card { background:#1e293b; border:1px solid #334155; border-radius:.75rem; }
-  .input { background:#0f172a; border:1px solid #475569; border-radius:.4rem; color:#e2e8f0;
+  .nav-item:hover, .nav-item.active { background:#374030; }
+  .card { background:#2d3626; border:1px solid #4a5538; border-radius:.75rem; }
+  .input { background:#161a12; border:1px solid #4a5538; border-radius:.4rem; color:#c4ccb4;
            padding:.35rem .6rem; outline:none; width:100%; }
-  .input:focus { border-color:#6366f1; }
+  .input:focus { border-color:#6a7d50; }
   .btn { border-radius:.4rem; padding:.35rem .9rem; font-size:.85rem; cursor:pointer;
          transition:filter .15s; display:inline-flex; align-items:center; gap:.3rem; }
-  .btn:hover { filter:brightness(1.15); }
-  .btn-primary  { background:#6366f1; color:#fff; }
-  .btn-success  { background:#22c55e; color:#fff; }
-  .btn-danger   { background:#ef4444; color:#fff; }
-  .btn-ghost    { background:#334155; color:#e2e8f0; }
-  .badge        { border-radius:9999px; padding:.1rem .55rem; font-size:.7rem; font-weight:600; }
-  .highlight    { background:#fef08a; color:#1e293b; border-radius:2px; padding:0 2px; }
-  .tag-chip     { background:#312e81; color:#a5b4fc; border-radius:9999px;
-                  padding:.15rem .55rem; font-size:.72rem; }
-  .bool-row     { background:#0f172a; border:1px solid #334155; border-radius:.4rem;
-                  padding:.5rem .6rem; display:flex; align-items:center; gap:.5rem; }
+  .btn:hover { filter:brightness(1.2); }
+  .btn-primary { background:#414833; color:#e8ecd8; }
+  .btn-success { background:#3d6b42; color:#e8ecd8; }
+  .btn-danger  { background:#7a3530; color:#e8ecd8; }
+  .btn-ghost   { background:#37402c; color:#c4ccb4; }
+  .badge       { border-radius:9999px; padding:.1rem .55rem; font-size:.7rem; font-weight:600; }
+  .highlight   { background:#7a8c50; color:#1a2015; border-radius:2px; padding:0 2px; }
+  .tag-chip    { background:#37402c; color:#a4b080; border-radius:9999px;
+                 padding:.15rem .55rem; font-size:.72rem; }
+  .bool-row    { background:#161a12; border:1px solid #4a5538; border-radius:.4rem;
+                 padding:.5rem .6rem; display:flex; align-items:center; gap:.5rem; }
   .bool-row .input { padding:.45rem .6rem; font-size:.9rem; min-height:2.2rem; }
-  .select       { background:#0f172a; border:1px solid #475569; border-radius:.4rem;
-                  color:#e2e8f0; padding:.3rem .5rem; outline:none; }
-  .select:focus { border-color:#6366f1; }
-  .candidate-card { border:1px solid #334155; border-radius:.6rem; background:#0f172a;
+  .select      { background:#161a12; border:1px solid #4a5538; border-radius:.4rem;
+                 color:#c4ccb4; padding:.3rem .5rem; outline:none; }
+  .select:focus { border-color:#6a7d50; }
+  .candidate-card { border:1px solid #4a5538; border-radius:.6rem; background:#161a12;
                     cursor:pointer; transition:border-color .15s; }
-  .candidate-card:hover { border-color:#6366f1; }
+  .candidate-card:hover { border-color:#6a7d50; }
   .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.7);
               display:flex; align-items:center; justify-content:center; z-index:50; }
-  .modal { background:#1e293b; border-radius:.75rem; max-width:760px; width:100%;
+  .modal { background:#252c1f; border-radius:.75rem; max-width:760px; width:100%;
            max-height:90vh; overflow-y:auto; padding:1.5rem; position:relative; }
   .profile-section { margin-bottom:1.4rem; }
-  .profile-section-title { font-size:1rem; font-weight:700; color:#f1f5f9; margin-bottom:.6rem;
-                            padding-bottom:.3rem; border-bottom:1px solid #334155; }
-  .profile-label { color:#94a3b8; font-size:.78rem; min-width:5.5rem; display:inline-block; }
+  .profile-section-title { font-size:1rem; font-weight:700; color:#d4dcc4; margin-bottom:.6rem;
+                            padding-bottom:.3rem; border-bottom:1px solid #4a5538; }
+  .profile-label { color:#8a9a70; font-size:.78rem; min-width:5.5rem; display:inline-block; }
   .profile-job-note ul { list-style:disc !important; padding-left:1.4rem !important; margin:.25rem 0 !important; }
   .profile-job-note li { display:list-item !important; margin-bottom:.3rem !important; }
   .tree-item { padding:.3rem .5rem; border-radius:.3rem; cursor:pointer; }
-  .tree-item:hover { background:#334155; }
-  .tree-item.selected { background:#312e81; color:#a5b4fc; }
+  .tree-item:hover { background:#374030; }
+  .tree-item.selected { background:#414833; color:#d4dcc4; }
   ::-webkit-scrollbar { width:6px; }
-  ::-webkit-scrollbar-track { background:#1e293b; }
-  ::-webkit-scrollbar-thumb { background:#475569; border-radius:3px; }
+  ::-webkit-scrollbar-track { background:#1c2118; }
+  ::-webkit-scrollbar-thumb { background:#4a5538; border-radius:3px; }
   .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
   .loading-spin { animation:spin 1s linear infinite; }
   @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   .tooltip { position:relative; }
   .tooltip:hover::after { content:attr(data-tip); position:absolute; bottom:120%;
-    left:50%; transform:translateX(-50%); background:#0f172a; color:#e2e8f0;
-    border:1px solid #475569; border-radius:.3rem; padding:.2rem .5rem;
+    left:50%; transform:translateX(-50%); background:#161a12; color:#c4ccb4;
+    border:1px solid #4a5538; border-radius:.3rem; padding:.2rem .5rem;
     font-size:.7rem; white-space:nowrap; z-index:99; }
+  /* ── Keyword drag-and-drop ── */
+  .kw-chip { background:#161a12; border:1px solid #4a5538; border-radius:9999px;
+             padding:.2rem .65rem; font-size:12px; cursor:grab; color:#c4ccb4;
+             transition:border-color .15s, background .15s; user-select:none;
+             display:inline-flex; align-items:center; gap:.25rem; line-height:1.4; }
+  .kw-chip:hover { border-color:#6a7d50; }
+  .kw-chip:active { cursor:grabbing; }
+  .kw-chip.is-dragging { opacity:.3; cursor:grabbing; }
+  .kw-chip.kw-selected { border-color:#8aac60; background:#202c1a; outline:1px solid #8aac60; }
+  .kw-chip .chip-del { opacity:0; color:#8aac60; cursor:pointer; font-size:10px;
+                       line-height:1; transition:opacity .1s; }
+  .kw-chip:hover .chip-del { opacity:1; }
+  /* ── Field cards ── */
+  .kw-field-card { border-radius:.75rem; min-width:220px; width:fit-content; flex-shrink:0;
+                   transition:box-shadow .15s; }
+  .kw-field-card.drag-target { box-shadow:0 0 0 3px rgba(106,125,80,.5), 0 0 16px rgba(106,125,80,.2); }
+  .kw-field-drag-handle { cursor:grab; line-height:1; }
+  .kw-field-drag-handle:active { cursor:grabbing; }
+  .kw-pool-panel { transition:background .15s; }
+  .kw-pool-panel.drag-over { background:#1e2618; }
+  /* ── Selection popup ── */
+  .sel-kw-popup { position:fixed; z-index:200; transform:translateX(-50%) translateY(calc(-100% - 6px));
+                  background:#374030; border:1px solid #6a7d50; border-radius:.4rem;
+                  padding:.3rem .75rem; font-size:.78rem; color:#e8ecd8; cursor:pointer;
+                  white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,.5);
+                  pointer-events:auto; user-select:none; }
+  .sel-kw-popup:hover { background:#414833; }
+  /* ── Tailwind color overrides ── */
+  .bg-slate-900      { background-color:#1c2118 !important; }
+  .bg-slate-800      { background-color:#252c1f !important; }
+  .bg-slate-700      { background-color:#374030 !important; }
+  .border-slate-700  { border-color:#4a5538 !important; }
+  .border-slate-800  { border-color:#3a4530 !important; }
+  .border-indigo-700 { border-color:#414833 !important; }
+  .text-slate-100    { color:#e4ead4 !important; }
+  .text-slate-200    { color:#d4dcc4 !important; }
+  .text-slate-300    { color:#c4ccb4 !important; }
+  .text-slate-400    { color:#8a9a70 !important; }
+  .text-slate-500    { color:#6a7a50 !important; }
+  .text-slate-600    { color:#4a5a38 !important; }
+  .text-slate-900    { color:#1a2015 !important; }
+  .text-indigo-300   { color:#b0c490 !important; }
+  .text-indigo-400   { color:#6a7d50 !important; }
+  .bg-yellow-500     { background-color:#7a8c50 !important; }
+  .border-yellow-500 { border-color:#7a8c50 !important; }
+  .text-green-400    { color:#7aaf6a !important; }
+  .text-red-400      { color:#c27b6a !important; }
+  .text-amber-400    { color:#a4b060 !important; }
 </style>
 </head>
 <body>
@@ -77,6 +127,10 @@
     </nav-item>
     <div class="flex-1"></div>
     <!-- Cookie status indicator -->
+    <div>
+      <img :src="cookieValid ? '/static/azul-1.png' : '/static/azul-2.png'" alt="Azul"
+           style="width:80%;display:block;object-fit:contain;margin:0 auto;opacity:0.9;"/>
+    </div>
     <div class="px-2 py-2 border-t border-slate-700 text-xs text-slate-400 flex items-center gap-2">
       <span :class="['status-dot', cookieValid ? 'bg-green-400' : 'bg-red-400']"></span>
       {{ cookieValid ? '104 Connected' : 'Not Connected' }}
@@ -185,16 +239,19 @@
                 </select>
                 <input type="checkbox" :checked="!cond.negate" @change="cond.negate = !$event.target.checked" class="cursor-pointer" title="toggle NOT"/>
                 <span v-if="cond.negate" class="text-red-400 font-bold text-xs">NOT</span>
-                <select v-model="cond.field" class="select text-xs" style="width:5rem;">
-                  <option value="any">any field</option>
-                  <option value="title">title</option>
-                  <option value="skills">skills</option>
-                  <option value="edu">edu</option>
-                </select>
                 <button @click="search.boolQuery.splice(i,1)" class="text-red-400 hover:text-red-300 ml-auto">✕</button>
               </div>
-              <!-- Line 2: keyword input full width -->
-              <input v-model="cond.value" class="input" placeholder="type keyword…" style="width:100%;font-size:.95rem;padding:.5rem .6rem;"/>
+              <!-- Line 2: type or pick from DB -->
+              <div style="display:flex;gap:.35rem;align-items:center;">
+                <input v-model="cond.value" class="input" placeholder="type keyword…"
+                       style="flex:1;font-size:.9rem;padding:.4rem .5rem;"/>
+                <span class="text-slate-500 text-xs flex-shrink-0">or</span>
+                <select @change="e => { cond.value = e.target.value; e.target.selectedIndex = 0; }"
+                        class="select text-xs" style="flex:1;">
+                  <option value="" disabled selected>from DB…</option>
+                  <option v-for="kw in allKwKeywords" :key="kw.id" :value="kw.term">{{kw.term}}</option>
+                </select>
+              </div>
             </div>
             <div class="flex gap-1 mt-2">
               <button @click="applyLocalFilter" class="btn btn-primary flex-1 text-xs">Apply</button>
@@ -415,78 +472,83 @@
     </section>
 
     <!-- ═══ KEYWORDS DB VIEW ═══════════════════════════════ -->
-    <section v-if="currentView==='keywords'" class="flex flex-col h-full overflow-hidden">
+    <section v-if="currentView==='keywords'" class="flex flex-col h-full overflow-hidden"
+             @click="clearKwSelection">
       <div class="p-4 border-b border-slate-700 flex items-center gap-3">
         <h1 class="text-lg font-semibold">Keywords Database</h1>
+        <div class="flex-1"></div>
+        <button @click="openKeywordModal(null)" class="btn btn-primary text-xs">+ Add Keyword</button>
+        <button @click="addKwField" class="btn btn-ghost text-xs">+ Add Field</button>
       </div>
+
       <div class="flex flex-1 overflow-hidden">
 
-        <!-- Industry tree -->
-        <div class="w-56 border-r border-slate-700 overflow-y-auto p-3">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-slate-400 uppercase">Industries</span>
-            <button @click="openIndustryModal()" class="text-indigo-400 text-xs hover:text-indigo-300">+</button>
-          </div>
-          <div v-for="ind in industries" :key="ind.id">
-            <div :class="['tree-item flex items-center justify-between text-sm',
-                          kwFilter.industry_id===ind.id ? 'selected' : 'text-slate-300']"
-                 @click="selectIndustry(ind)">
-              <span>{{ind.name}}</span>
-              <button @click.stop="deleteIndustry(ind.id)" class="text-red-400 opacity-0 hover:opacity-100 text-xs">✕</button>
-            </div>
-            <!-- Positions under this industry -->
-            <div v-if="kwFilter.industry_id===ind.id" class="ml-3 mt-1 mb-1">
-              <div v-for="pos in filteredPositions" :key="pos.id"
-                   :class="['tree-item flex items-center justify-between text-xs',
-                             kwFilter.position_id===pos.id ? 'selected' : 'text-slate-400']"
-                   @click.stop="selectPosition(pos)">
-                <span>{{pos.name}}</span>
-                <button @click.stop="deletePosition(pos.id)" class="text-red-400 opacity-0 hover:opacity-100">✕</button>
-              </div>
-              <div class="tree-item text-xs text-indigo-400 cursor-pointer"
-                   @click.stop="openPositionModal(ind.id)">+ Add position</div>
-            </div>
-          </div>
-          <div class="tree-item text-xs text-indigo-400 mt-2" @click="openIndustryModal()">+ Add industry</div>
-        </div>
+        <!-- Keywords pool (left panel) -->
+        <div :class="['kw-pool-panel w-64 border-r border-slate-700 flex flex-col overflow-hidden',
+                      kwDrag.target==='pool' ? 'drag-over' : '']"
+             @dragenter.prevent="kwDrag.target='pool'"
+             @dragover.prevent
+             @drop.prevent="onDropOnPool">
 
-        <!-- Keywords panel -->
-        <div class="flex-1 overflow-y-auto p-4">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="text-sm text-slate-300">
-              <span v-if="kwFilter.position_id">{{currentPositionName}}</span>
-              <span v-else-if="kwFilter.industry_id">{{currentIndustryName}} — all positions</span>
-              <span v-else class="text-slate-500">Select an industry to browse keywords</span>
-            </div>
-            <div class="flex-1"></div>
-            <button @click="openKeywordModal(null)" :disabled="!kwFilter.industry_id" class="btn btn-primary text-xs">+ Add Keyword</button>
+          <!-- Tabs (sticky) -->
+          <div class="flex border-b border-slate-700 text-xs flex-shrink-0">
+            <button :class="['flex-1 py-2 px-1 font-semibold transition-colors',
+                             kwPoolTab==='all'
+                               ? 'text-indigo-300 border-b-2 border-indigo-400 bg-slate-800'
+                               : 'text-slate-500 hover:text-slate-300']"
+                    @click.stop="kwPoolTab='all'">
+              All <span class="ml-1 text-slate-500">{{allKwKeywords.length}}</span>
+            </button>
+            <button :class="['flex-1 py-2 px-1 font-semibold transition-colors',
+                             kwPoolTab==='unassigned'
+                               ? 'text-indigo-300 border-b-2 border-indigo-400 bg-slate-800'
+                               : 'text-slate-500 hover:text-slate-300']"
+                    @click.stop="kwPoolTab='unassigned'">
+              Unassigned <span class="ml-1 text-slate-500">{{kwUnassignedKeywords.length}}</span>
+            </button>
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <div v-for="kw in filteredKeywords" :key="kw.id"
-                 class="card p-3">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="font-semibold text-sm text-slate-100">{{kw.term}}</div>
-                  <div v-if="kw.notes" class="text-xs text-slate-400 mt-1">{{kw.notes}}</div>
-                  <div class="flex gap-1 mt-2">
-                    <span v-if="kw.industry_name" class="tag-chip">{{kw.industry_name}}</span>
-                    <span v-if="kw.position_name" class="tag-chip">{{kw.position_name}}</span>
-                    <span v-else class="badge bg-slate-700 text-slate-400 text-xs">all positions</span>
-                  </div>
-                </div>
-                <div class="flex gap-1 flex-shrink-0">
-                  <button @click="openKeywordModal(kw)" class="btn btn-ghost text-xs">✏</button>
-                  <button @click="deleteKeyword(kw.id)" class="btn btn-danger text-xs">✕</button>
-                </div>
-              </div>
+          <!-- Keyword chips — scrollable -->
+          <div class="p-3 flex flex-wrap gap-1 content-start overflow-y-auto flex-1">
+            <span v-for="kw in kwPoolList" :key="kw.id"
+                  :class="['kw-chip',
+                           kwDrag.keyword && kwDrag.keyword.id===kw.id && !kwDrag.keyword.fromFieldId ? 'is-dragging' : '',
+                           selectedKw.id===kw.id && !selectedKw.fieldId ? 'kw-selected' : '']"
+                  draggable="true"
+                  @click.stop="selectKw(kw.id, null)"
+                  @dragstart="startKwDrag(kw, null)"
+                  @dragend="onDragEnd">
+              {{kw.term}}
+              <span class="chip-del" @click.stop="deleteKeyword(kw.id)" title="Delete keyword">×</span>
+            </span>
+            <div v-if="!kwPoolList.length" class="text-slate-500 text-xs text-center w-full mt-6">
+              <span v-if="kwPoolTab==='unassigned'">All keywords are assigned to fields.</span>
+              <span v-else>No keywords yet.<br/>Click <b>+ Add Keyword</b>.</span>
             </div>
           </div>
-          <div v-if="kwFilter.industry_id && !filteredKeywords.length"
-               class="text-slate-500 text-sm text-center mt-10">
-            No keywords yet. Click <b>+ Add Keyword</b>.
+
+          <!-- Footer hint (sticky) -->
+          <div class="px-3 pb-3 pt-2 text-xs text-slate-700 border-t border-slate-800 leading-relaxed flex-shrink-0">
+            Drag chip → field to copy<br/>
+            Drag ⠿⠿ handle → field to nest<br/>
+            Drop here → return to root
           </div>
         </div>
+
+        <!-- Fields area (right) — uses recursive kw-field-node component -->
+        <div class="flex-1 overflow-auto p-4"
+             @dragenter.prevent="kwDrag.target=null"
+             @dragover.prevent>
+          <div v-if="!kwFields.length" class="text-slate-500 text-sm text-center mt-20">
+            Click <b>+ Add Field</b> to create a named group,<br/>
+            then drag keywords from the pool, or drag fields into each other to nest.
+          </div>
+          <div class="flex flex-wrap gap-4 items-start content-start">
+            <kw-field-node v-for="field in kwFields" :key="field.id"
+                           :field="field" :depth="0"/>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -583,7 +645,7 @@
 
   <!-- Candidate detail modal (live search result) -->
   <div v-if="modals.candidate" class="modal-bg" @click.self="modals.candidate=null">
-    <div class="modal">
+    <div class="modal" @mouseup="handleProfileMouseup">
       <button @click="modals.candidate=null" class="absolute top-3 right-4 text-slate-400 hover:text-slate-200 text-xl">✕</button>
 
       <!-- HEADER -->
@@ -872,30 +934,9 @@
       <button @click="modals.keyword=undefined" class="absolute top-3 right-4 text-slate-400 text-xl">✕</button>
       <h2 class="text-lg font-bold mb-4">{{modals.keywordEdit?.id ? 'Edit' : 'Add'}} Keyword</h2>
       <div class="flex flex-col gap-3">
-        <div>
-          <label class="text-xs text-slate-400">Keyword / Term *</label>
-          <input v-model="modals.keywordForm.term" class="input text-sm" placeholder="e.g. single integrity"/>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400">Notes (why useful?)</label>
-          <textarea v-model="modals.keywordForm.notes" class="input text-sm" rows="2"
-                    placeholder="e.g. Used in power supply design roles, indicates high-voltage experience"></textarea>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400">Industry</label>
-          <select v-model="modals.keywordForm.industry_id" class="select w-full text-sm" @change="modals.keywordForm.position_id=''">
-            <option value="">General (all industries)</option>
-            <option v-for="i in industries" :key="i.id" :value="i.id">{{i.name}}</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs text-slate-400">Position</label>
-          <select v-model="modals.keywordForm.position_id" class="select w-full text-sm">
-            <option value="">All positions</option>
-            <option v-for="p in kwModalPositions" :key="p.id" :value="p.id">{{p.name}}</option>
-          </select>
-        </div>
-        <div class="flex gap-2 mt-1">
+        <input v-model="modals.keywordForm.term" class="input text-sm" placeholder="Keyword term…"
+               @keydown.enter="saveKeyword"/>
+        <div class="flex gap-2">
           <button @click="saveKeyword" class="btn btn-primary flex-1">Save</button>
           <button @click="modals.keyword=undefined" class="btn btn-ghost flex-1">Cancel</button>
         </div>
@@ -929,12 +970,107 @@
     </div>
   </div>
 
+  <!-- Selection → keyword floating button -->
+  <div v-if="selectionPopup.visible"
+       class="sel-kw-popup"
+       :style="{left: selectionPopup.x + 'px', top: selectionPopup.y + 'px'}"
+       @mousedown.stop
+       @click="addSelectionAsKeyword">
+    + Add as keyword &nbsp;<span style="opacity:.6;font-size:.7rem">(K)</span>
+  </div>
+
 </div>
 
 <script>
-const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+const { createApp, ref, reactive, computed, watch, onMounted, provide, inject } = Vue;
 
-createApp({
+// ── Keyword field color palette ───────────────────────
+const KW_COLORS = [
+  { border:'#c2c5aa', text:'#dedad0', rgb:'194,197,170' },  // light sage
+  { border:'#b6ad90', text:'#d4cbba', rgb:'182,173,144' },  // warm tan
+  { border:'#a4ac86', text:'#c4ccaa', rgb:'164,172,134' },  // sage green
+  { border:'#a68a64', text:'#c4a888', rgb:'166,138,100' },  // khaki
+  { border:'#936639', text:'#c49060', rgb:'147,102,57'  },  // amber brown
+  { border:'#7f4f24', text:'#b08050', rgb:'127,79,36'   },  // dark brown
+  { border:'#656d4a', text:'#98a070', rgb:'101,109,74'  },  // olive
+  { border:'#414833', text:'#7a8060', rgb:'65,72,51'    },  // dark olive
+];
+
+function _kwFieldStyle(colorIdx, depth, isDragTarget) {
+  const c = KW_COLORS[colorIdx % KW_COLORS.length];
+  const alpha = isDragTarget ? 0.22 : Math.max(0.05, 0.10 - depth * 0.025);
+  const bw = depth === 0 ? '2px' : '1px';
+  const borderAlpha = isDragTarget ? 1 : Math.max(0.45, 1 - depth * 0.2);
+  const borderColor = isDragTarget
+    ? `rgba(255,255,255,0.9)`
+    : `rgba(${c.rgb},${borderAlpha})`;
+  return { border: `${bw} solid ${borderColor}`, background: `rgba(${c.rgb},${alpha})` };
+}
+
+// ── Recursive field card component ────────────────────
+const KwFieldNodeDef = {
+  name: 'KwFieldNode',
+  props: { field: Object, depth: { type: Number, default: 0 } },
+  setup(props) {
+    const ctx = inject('kwCtx');
+    return ctx;
+  },
+  template: `
+    <div :class="['kw-field-card', kwDrag.target===field.id ? 'drag-target' : '']"
+         :style="_kwFieldStyle(field.colorIdx, depth, kwDrag.target===field.id)"
+         @dragenter.prevent="kwDrag.target=field.id"
+         @dragover.prevent
+         @drop.prevent="onDrop(field.id)"
+         @dragend="onDragEnd">
+
+      <!-- Field header -->
+      <div class="flex items-center gap-1 px-3 py-2"
+           style="border-bottom:1px solid rgba(148,163,184,0.15)">
+        <span class="kw-field-drag-handle text-slate-500 hover:text-slate-300 text-xs select-none"
+              draggable="true"
+              @dragstart.stop="startFieldDrag(field,$event)"
+              @dragend.stop="onDragEnd"
+              title="Drag to nest inside another field">⠿⠿</span>
+        <span class="text-sm font-semibold flex-1 select-none cursor-text"
+              :style="{color: KW_COLORS[field.colorIdx % KW_COLORS.length].text}"
+              @dblclick="renameKwField(field)">{{field.name}}</span>
+        <button @click="addChildKwField(field)"
+                class="text-slate-500 hover:text-slate-200 text-xs px-1" title="Add sub-field">+sub</button>
+        <button @click="deleteKwField(field)"
+                class="text-slate-600 hover:text-red-400 text-xs px-1">✕</button>
+      </div>
+
+      <!-- Keywords inside this field -->
+      <div class="px-2 pt-2 flex flex-wrap gap-1">
+        <span v-for="kwId in field.keywordIds" :key="kwId+'@'+field.id"
+              :class="['kw-chip',
+                       kwDrag.keyword && kwDrag.keyword.id===kwId
+                         && kwDrag.keyword.fromFieldId===field.id ? 'is-dragging' : '',
+                       selectedKw.id===kwId && selectedKw.fieldId===field.id ? 'kw-selected' : '']"
+              draggable="true"
+              @click.stop="selectKw(kwId, field.id)"
+              @dragstart.stop="startKwDrag(getKwById(kwId), field.id)"
+              @dragend.stop="onDragEnd">
+          {{getKwById(kwId) ? getKwById(kwId).term : '?'}}
+          <span class="chip-del" @click.stop="removeKwFromField(kwId, field.id)">×</span>
+        </span>
+        <span v-if="!field.keywordIds.length && !field.children.length"
+              class="text-xs text-slate-600 italic w-full text-center py-2 pointer-events-none">
+          drop keywords or fields here
+        </span>
+      </div>
+
+      <!-- Nested child fields — row layout so parent expands to cover them -->
+      <div v-if="field.children && field.children.length" class="p-2 flex flex-row flex-wrap gap-2 items-start">
+        <kw-field-node v-for="child in field.children" :key="child.id"
+                       :field="child" :depth="depth+1"/>
+      </div>
+      <div v-else class="pb-1"></div>
+    </div>
+  `,
+};
+
+const _app = createApp({
   setup() {
     // ── Navigation ─────────────────────────────────────────
     const views = [
@@ -1174,19 +1310,217 @@ function escapeHtml(s) {
     // ── Keywords DB ────────────────────────────────────────
     const industries = ref([]);
     const allPositions = ref([]);
-    const filteredKeywords = ref([]);
-    const kwFilter = reactive({ industry_id: null, position_id: null });
+    const allKwKeywords = ref([]);   // all keywords from DB (pool always shows all)
 
-    const filteredPositions = computed(() =>
-      allPositions.value.filter(p => p.industry_id === kwFilter.industry_id)
+    // Field tree stored in localStorage
+    // Node shape: { id, name, colorIdx, keywordIds: [], children: [] }
+    const kwFields = ref([]);
+
+    function _ensureChildren(nodes) {
+      for (const n of nodes) { if (!n.children) n.children = []; _ensureChildren(n.children); }
+    }
+    function loadKwFields() {
+      try {
+        const raw = localStorage.getItem('kw_fields_v2');
+        kwFields.value = raw ? JSON.parse(raw) : [];
+        _ensureChildren(kwFields.value);
+      } catch { kwFields.value = []; }
+    }
+    function saveKwFields() {
+      localStorage.setItem('kw_fields_v2', JSON.stringify(kwFields.value));
+    }
+
+    // ── Tree helpers ───────────────────────────────────────
+    function findField(id, nodes, parent) {
+      nodes = nodes !== undefined ? nodes : kwFields.value;
+      parent = parent !== undefined ? parent : null;
+      for (const n of nodes) {
+        if (n.id === id) return { node: n, parent, siblings: nodes };
+        const r = findField(id, n.children, n);
+        if (r) return r;
+      }
+      return null;
+    }
+    function isAncestorOf(potentialAncestorId, fieldId) {
+      // Is potentialAncestorId an ancestor (or self) of fieldId?
+      const a = findField(potentialAncestorId);
+      if (!a) return false;
+      if (potentialAncestorId === fieldId) return true;
+      function search(nodes) {
+        for (const n of nodes) { if (n.id === fieldId) return true; if (search(n.children)) return true; }
+        return false;
+      }
+      return search(a.node.children);
+    }
+    function setColorRecursive(node, colorIdx) {
+      node.colorIdx = colorIdx;
+      for (const child of node.children) setColorRecursive(child, colorIdx);
+    }
+    function nextColorIdx() {
+      const n = parseInt(localStorage.getItem('kw_cc') || '0');
+      localStorage.setItem('kw_cc', n + 1);
+      return n % KW_COLORS.length;
+    }
+    function pruneKwIdFromTree(kwId, nodes) {
+      nodes = nodes || kwFields.value;
+      for (const n of nodes) {
+        n.keywordIds = n.keywordIds.filter(id => id !== kwId);
+        pruneKwIdFromTree(kwId, n.children);
+      }
+    }
+
+    // ── Field CRUD ─────────────────────────────────────────
+    function addKwField() {
+      const name = prompt('Field name:');
+      if (!name?.trim()) return;
+      kwFields.value.push({ id: Date.now().toString(), name: name.trim(),
+        colorIdx: nextColorIdx(), keywordIds: [], children: [] });
+      saveKwFields();
+    }
+    function addChildKwField(parentField) {
+      const name = prompt('Sub-field name:');
+      if (!name?.trim()) return;
+      if (!parentField.children) parentField.children = [];
+      parentField.children.push({ id: Date.now().toString(), name: name.trim(),
+        colorIdx: parentField.colorIdx, keywordIds: [], children: [] });
+      saveKwFields();
+    }
+    function renameKwField(field) {
+      const name = prompt('Rename field:', field.name);
+      if (!name?.trim()) return;
+      field.name = name.trim();
+      saveKwFields();
+    }
+    function deleteKwField(field) {
+      if (!confirm(`Delete "${field.name}" and all its sub-fields?`)) return;
+      const r = findField(field.id);
+      if (!r) return;
+      r.siblings.splice(r.siblings.indexOf(r.node), 1);
+      saveKwFields();
+    }
+    function removeKwFromField(kwId, fieldId) {
+      const r = findField(fieldId);
+      if (r) { r.node.keywordIds = r.node.keywordIds.filter(id => id !== kwId); saveKwFields(); }
+    }
+
+    // ── Selection (click-to-select + Delete key) ──────────
+    const selectedKw = reactive({ id: null, fieldId: null });
+
+    function selectKw(id, fieldId) {
+      selectedKw.id = id;
+      selectedKw.fieldId = fieldId !== undefined ? fieldId : null;
+    }
+    function clearKwSelection() { selectedKw.id = null; selectedKw.fieldId = null; }
+
+    function _handleKwKeydown(e) {
+      if (!selectedKw.id) return;
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      e.preventDefault();
+      if (selectedKw.fieldId) {
+        removeKwFromField(selectedKw.id, selectedKw.fieldId);
+        clearKwSelection();
+      } else {
+        deleteKeyword(selectedKw.id);  // deleteKeyword already confirms + clears from fields
+        clearKwSelection();
+      }
+    }
+
+    // ── Drag state (reactive so component templates can mutate directly) ──
+    const kwDrag = reactive({ target: null, keyword: null, field: null });
+    // keyword: { id, term, fromFieldId } | null
+    // field:   field node being dragged | null
+
+    function startKwDrag(kw, fromFieldId) {
+      if (!kw) return;
+      kwDrag.keyword = { id: kw.id, term: kw.term, fromFieldId };
+      kwDrag.field = null;
+    }
+    function startFieldDrag(field, evt) {
+      kwDrag.field = field;
+      kwDrag.keyword = null;
+      evt.dataTransfer.effectAllowed = 'move';
+    }
+    function onDragEnd() { kwDrag.target = null; kwDrag.keyword = null; kwDrag.field = null; }
+
+    function onDrop(targetFieldId) {
+      if (kwDrag.keyword)     _dropKwOnField(targetFieldId);
+      else if (kwDrag.field)  _dropFieldOnField(targetFieldId);
+      onDragEnd();
+    }
+    function onDropOnPool() {
+      if (kwDrag.keyword) {
+        // Remove keyword from its source field (puts it back to pool-only)
+        const { id, fromFieldId } = kwDrag.keyword;
+        if (fromFieldId) {
+          const r = findField(fromFieldId);
+          if (r) { r.node.keywordIds = r.node.keywordIds.filter(kid => kid !== id); saveKwFields(); }
+        }
+      } else if (kwDrag.field) {
+        _dropFieldOnRoot();
+      }
+      onDragEnd();
+    }
+
+    function _dropKwOnField(targetId) {
+      const { id, fromFieldId } = kwDrag.keyword;
+      if (fromFieldId === targetId) return;
+      // If from a field: MOVE (remove from source)
+      if (fromFieldId) {
+        const src = findField(fromFieldId);
+        if (src) src.node.keywordIds = src.node.keywordIds.filter(kid => kid !== id);
+      }
+      // Add to target (copy if from pool; move if from field)
+      const tgt = findField(targetId);
+      if (tgt && !tgt.node.keywordIds.includes(id)) tgt.node.keywordIds.push(id);
+      saveKwFields();
+    }
+    function _dropFieldOnField(targetId) {
+      const dragId = kwDrag.field.id;
+      if (dragId === targetId) return;
+      if (isAncestorOf(dragId, targetId)) return;  // prevent nesting into own descendant
+      const src = findField(dragId);
+      if (!src) return;
+      const node = src.node;
+      src.siblings.splice(src.siblings.indexOf(node), 1);
+      const tgt = findField(targetId);
+      if (!tgt) { kwFields.value.push(node); saveKwFields(); return; }
+      // Inherit parent color
+      setColorRecursive(node, tgt.node.colorIdx);
+      if (!tgt.node.children) tgt.node.children = [];
+      tgt.node.children.push(node);
+      saveKwFields();
+    }
+    function _dropFieldOnRoot() {
+      const dragId = kwDrag.field.id;
+      const src = findField(dragId);
+      if (!src || src.parent === null) return;
+      const node = src.node;
+      src.siblings.splice(src.siblings.indexOf(node), 1);
+      setColorRecursive(node, nextColorIdx());
+      kwFields.value.push(node);
+      saveKwFields();
+    }
+
+    // ── Pool tab & unassigned computed ────────────────────
+    const kwPoolTab = ref('all');  // 'all' | 'unassigned'
+
+    const kwAssignedIds = computed(() => {
+      const ids = new Set();
+      function scan(nodes) {
+        for (const n of nodes) { for (const id of n.keywordIds) ids.add(id); scan(n.children); }
+      }
+      scan(kwFields.value);
+      return ids;
+    });
+    const kwUnassignedKeywords = computed(() =>
+      allKwKeywords.value.filter(kw => !kwAssignedIds.value.has(kw.id))
     );
-    const currentIndustryName = computed(() =>
-      industries.value.find(i => i.id === kwFilter.industry_id)?.name || ''
-    );
-    const currentPositionName = computed(() =>
-      allPositions.value.find(p => p.id === kwFilter.position_id)?.name || ''
+    const kwPoolList = computed(() =>
+      kwPoolTab.value === 'unassigned' ? kwUnassignedKeywords.value : allKwKeywords.value
     );
 
+    // ── Keyword CRUD ───────────────────────────────────────
     async function loadIndustries() {
       industries.value = await fetch('/api/keywords/industries').then(r=>r.json());
     }
@@ -1194,44 +1528,44 @@ function escapeHtml(s) {
       allPositions.value = await fetch('/api/keywords/positions').then(r=>r.json());
     }
     async function loadKeywords() {
-      const qs = new URLSearchParams();
-      if (kwFilter.industry_id) qs.set('industry_id', kwFilter.industry_id);
-      if (kwFilter.position_id) qs.set('position_id', kwFilter.position_id);
-      filteredKeywords.value = await fetch(`/api/keywords/?${qs}`).then(r=>r.json());
+      allKwKeywords.value = await fetch('/api/keywords/').then(r=>r.json());
+      loadKwFields();
     }
-
-    function selectIndustry(ind) {
-      if (kwFilter.industry_id === ind.id) {
-        kwFilter.industry_id = null; kwFilter.position_id = null;
-      } else {
-        kwFilter.industry_id = ind.id; kwFilter.position_id = null;
-      }
-      loadKeywords();
+    function getKwById(id) {
+      return allKwKeywords.value.find(kw => kw.id === id) || null;
     }
-
-    function selectPosition(pos) {
-      kwFilter.position_id = kwFilter.position_id === pos.id ? null : pos.id;
-      loadKeywords();
-    }
-
-    async function deleteIndustry(id) {
-      if (!confirm('Delete industry and all its positions/keywords?')) return;
-      await fetch(`/api/keywords/industries/${id}`, {method:'DELETE'});
-      kwFilter.industry_id = null; kwFilter.position_id = null;
-      await Promise.all([loadIndustries(), loadPositions(), loadKeywords()]);
-    }
-
-    async function deletePosition(id) {
-      if (!confirm('Delete this position?')) return;
-      await fetch(`/api/keywords/positions/${id}`, {method:'DELETE'});
-      kwFilter.position_id = null;
-      await Promise.all([loadPositions(), loadKeywords()]);
-    }
-
     async function deleteKeyword(id) {
-      if (!confirm('Delete this keyword?')) return;
-      await fetch(`/api/keywords/${id}`, {method:'DELETE'});
+      if (!confirm('Delete this keyword from the database?')) return;
+      await fetch(`/api/keywords/${id}`, { method:'DELETE' });
+      pruneKwIdFromTree(id);
+      saveKwFields();
       await loadKeywords();
+    }
+
+    // ── Profile text selection → keyword ──────────────────
+    const selectionPopup = reactive({ visible: false, text: '', x: 0, y: 0 });
+
+    function handleProfileMouseup() {
+      const sel = window.getSelection();
+      const text = sel?.toString().trim();
+      if (text && text.length >= 1 && text.length <= 80) {
+        const rect = sel.getRangeAt(0).getBoundingClientRect();
+        selectionPopup.text = text;
+        selectionPopup.x = Math.round(rect.left + rect.width / 2);
+        selectionPopup.y = Math.round(rect.top);
+        selectionPopup.visible = true;
+      } else {
+        selectionPopup.visible = false;
+      }
+    }
+
+    function addSelectionAsKeyword() {
+      if (!selectionPopup.text) return;
+      modals.keywordEdit = null;
+      modals.keywordForm = { term: selectionPopup.text.trim(), notes: '', industry_id: '', position_id: '' };
+      modals.keyword = true;
+      selectionPopup.visible = false;
+      window.getSelection()?.removeAllRanges();
     }
 
     // ── Modals ─────────────────────────────────────────────
@@ -1324,7 +1658,7 @@ function escapeHtml(s) {
       modals.keywordEdit = kw;
       modals.keywordForm = kw
         ? { term:kw.term, notes:kw.notes||'', industry_id:kw.industry_id||'', position_id:kw.position_id||'' }
-        : { term:'', notes:'', industry_id: kwFilter.industry_id||'', position_id: kwFilter.position_id||'' };
+        : { term:'', notes:'', industry_id:'', position_id:'' };
       modals.keyword = true;
     }
 
@@ -1348,7 +1682,7 @@ function escapeHtml(s) {
         });
       }
       modals.keyword = undefined;
-      await loadKeywords();
+      await loadKeywords();  // reloads allKwKeywords
     }
 
     function openIndustryModal() { modals.industryName=''; modals.industry=true; }
@@ -1429,17 +1763,39 @@ function escapeHtml(s) {
       return new Date(s).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
     }
 
+    // ── Provide context for recursive kw-field-node component ─
+    provide('kwCtx', {
+      kwDrag,
+      KW_COLORS,
+      _kwFieldStyle,
+      getKwById,
+      selectedKw, selectKw, clearKwSelection,
+      removeKwFromField, renameKwField, deleteKwField, addChildKwField,
+      startKwDrag, startFieldDrag, onDragEnd, onDrop,
+    });
+
     // ── Watchers for view changes ──────────────────────────
     watch(currentView, async (v) => {
       if (v === 'projects')   await Promise.all([loadProjects(), loadIndustries(), loadPositions()]);
       if (v === 'candidates') await Promise.all([loadProjects(), loadCandidates()]);
-      if (v === 'keywords')   await Promise.all([loadIndustries(), loadPositions(), loadKeywords()]);
+      if (v === 'keywords')   await loadKeywords();
       if (v === 'settings')   await loadSettings();
     });
 
     // ── Init ───────────────────────────────────────────────
     onMounted(async () => {
       await Promise.all([checkCookieStatus(), loadAreas(), loadProjects(), loadIndustries(), loadPositions()]);
+      document.addEventListener('keydown', _handleKwKeydown);
+      document.addEventListener('keydown', (e) => {
+        if (selectionPopup.visible && (e.key === 'k' || e.key === 'K') && !['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) {
+          e.preventDefault();
+          addSelectionAsKeyword();
+        }
+      });
+      document.addEventListener('mousedown', (e) => {
+        if (selectionPopup.visible && !e.target.closest('.sel-kw-popup'))
+          selectionPopup.visible = false;
+      });
     });
 
     return {
@@ -1449,10 +1805,15 @@ function escapeHtml(s) {
       projects, selectedProject, projectCandidates, projectKeywords,
       loadProjects, selectProject, deleteProject, removeCandidateFromProject,
       savedCandidates, candSearch, candProjectFilter, loadCandidates, exportCSV,
-      industries, allPositions, filteredPositions, filteredKeywords, kwFilter,
-      currentIndustryName, currentPositionName,
-      loadIndustries, loadPositions, loadKeywords,
-      selectIndustry, selectPosition, deleteIndustry, deletePosition, deleteKeyword,
+      industries, allPositions, loadIndustries, loadPositions, loadKeywords,
+      allKwKeywords, kwFields, kwDrag,
+      kwPoolTab, kwPoolList, kwUnassignedKeywords,
+      KW_COLORS, _kwFieldStyle,
+      selectedKw, selectKw, clearKwSelection,
+      getKwById, addKwField, addChildKwField, renameKwField, deleteKwField, removeKwFromField,
+      startKwDrag, startFieldDrag, onDragEnd, onDrop, onDropOnPool,
+      deleteKeyword,
+      selectionPopup, handleProfileMouseup, addSelectionAsKeyword,
       modals, openCandidateModal, openSavedCandidateModal,
       fullProfileLoading, fullProfileData, fullProfileError, fp,
       openProjectModal, saveProject, modalPositions,
@@ -1462,7 +1823,9 @@ function escapeHtml(s) {
       formatDate,
     };
   }
-}).mount('#app');
+});
+_app.component('kw-field-node', KwFieldNodeDef);
+_app.mount('#app');
 </script>
 </body>
 </html>
